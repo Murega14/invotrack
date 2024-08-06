@@ -1,0 +1,25 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flask-migrate = "*"
+flask-shell-ipython = "*"
+
+[packages]
+flask = "*"
+flask-sqlalchemy = "*"
+flask-wtf = "*"
+flask-login = "*"
+sqlalchemy-serializer = "*"
+werkzeug = "*"
+flask-jwt-extended = "*"
+python-dotenv = "*"
+sqlalchemy = "*"
+datetime = "*"
+requests = "*"
+
+
+[requires]
+python_version = "3.12.1"
