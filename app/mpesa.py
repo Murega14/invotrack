@@ -26,19 +26,26 @@ def generate_access_token():
     except Exception as e:
         raise Exception("Failed to get access token:" +str(e))
     
-def sendStkPush():
+def get_short_code(payment_method):
+    short_codes = {
+        'Mpesa': '',
+        'Family Bank': '',
+        'Coop Bank': ''
+
+        }
+    return short_codes.get(payment_method, '')
+
+def sendStkPush(payment_id):
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    shortCode = ''
-    if Payment.payment_method == 'Mpesa':
-        shortCode = ''
-        return shortCode
-    elif Payment.payment_method == 'Family Bank':
-        shortCode = ''
-        return shortCode
-    elif Payment.payment_method == 'Coop Bank':
-        shortCode = ''
-        return shortCode
+
+    payment = Payment.query.get(payment_id)
+    if not payment:
+        raise ValueError(f'Payment with ID {payment_id} not found')
+    payment_method = payment.payment_method
+    
+    shortCode = get_short_code(payment_method)
+    
 
     passkey = ''
     url = ''
