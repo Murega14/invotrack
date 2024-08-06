@@ -31,7 +31,7 @@ def populate_data():
         
         # Create sample invoices
         invoice1 = Invoice(
-            customer_id=customer1.id,
+            customer_name=customer1.name,
             invoice_number=1001,
             amount=150.75,
             date_issued=datetime.strptime('2023-08-01', '%Y-%m-%d').date(),
@@ -40,7 +40,7 @@ def populate_data():
         )
         
         invoice2 = Invoice(
-            customer_id=customer2.id,
+            customer_name=customer2.name,
             invoice_number=1002,
             amount=250.00,
             date_issued=datetime.strptime('2023-07-15', '%Y-%m-%d').date(),
@@ -54,14 +54,16 @@ def populate_data():
         
         # Create sample payments
         payment1 = Payment(
-            invoice_id=invoice1.id,
+            invoice_number=invoice1.invoice_number,
             payment_method='credit_card',
+            transaction_code = 'HA5FUJ9',
             amount=150.75
         )
         
         payment2 = Payment(
-            invoice_id=invoice2.id,
+            invoice_number=invoice2.invoice_number,
             payment_method='bank_transfer',
+            transaction_code = 'GAH56GF',
             amount=250.00
         )
         

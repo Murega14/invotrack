@@ -2,7 +2,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData, Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_serializer import SerializerMixin
-from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 
@@ -51,7 +50,7 @@ class Invoice(db.Model, SerializerMixin):
     __tablename__ = 'invoices'
 
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    customer_name = db.Column(db.Integer, db.ForeignKey('customers.name'), nullable=False)
     invoice_number = db.Column(db.Integer, nullable=False, unique=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date_issued = db.Column(db.Date, nullable=False)
@@ -70,8 +69,9 @@ class Payment(db.Model, SerializerMixin):
     __tablename__ = 'payments'
 
     id = db.Column(db.Integer, primary_key=True)
-    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    invoice_number = db.Column(db.Integer, db.ForeignKey('invoices.invoice_number'), nullable=False)
     payment_method = db.Column(db.Enum('Family Bank', 'Coop Bank', 'Mpesa', name='payment_method'))
+    transaction_code = db.Column(db.String, nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     payment_date = db.Column(db.DateTime, default=db.func.current_timestamp())
 
