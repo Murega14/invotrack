@@ -40,7 +40,7 @@ class Customer(db.Model, SerializerMixin):
 
     invoices = db.relationship('Invoice', back_populates='customer')
 
-    serialize_rules = ('-invoices.customer',)
+    serialize_rules = ('-invoices.customer', '-payments.customer',)
 
     def __repr__(self):
         return f'<Customer {self.id}, {self.name}, {self.email}>'
@@ -60,10 +60,10 @@ class Invoice(db.Model, SerializerMixin):
     customer = db.relationship('Customer', back_populates='invoices')
     payments = db.relationship('Payment', back_populates='invoice')
 
-    serialize_rules = ('-payments.invoice',)
+    serialize_rules = ('-payments.invoice', '-customers.invoice',)
 
     def __repr__(self):
-        return f'<Invoice {self.id}, {self.invoice_number}, {self.amount}, {self.status}>'
+        return f'<Invoice {self.id}, {self.invoice_number}, {self.customer_name}, {self.amount}, {self.status}>'
 
 class Payment(db.Model, SerializerMixin):
     __tablename__ = 'payments'
@@ -77,7 +77,7 @@ class Payment(db.Model, SerializerMixin):
 
     invoice = db.relationship('Invoice', back_populates='payments')
 
-    serialize_rules = ('-invoice.payments',)
+    serialize_rules = ('-invoices.payment', '-customers.payment',)
 
     def __repr__(self):
-        return f'<Payment {self.id}, {self.payment_method}, {self.amount}, {self.payment_date}>'
+        return f'<Payment {self.id}, {self.invoice_number}, {self.payment_method}, {self.transaction_code}, {self.amount}, {self.payment_date}>'

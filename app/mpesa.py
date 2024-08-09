@@ -5,50 +5,28 @@ from datetime import datetime
 from app.models import Payment
 
 def generate_access_token():
-    consumer_key = ''
-    consumer_secret = ''
+    consumer_key = 'ArY61zTkRgKtueKQkaIuOwimKORawCPF1ZxG01TDN3IYAqEl'
+    consumer_secret = '58FxVr4kZOG4j1wtW48KAHuCMzRwsmLrGSWxg39Tw8Y5d4BX2rYdsqQLyBhk2TiZ'
 
-    url = ''
-
-    try:
-        encoded_credentials = base64.b64decode(f'{consumer_key}:{consumer_secret}'.encode())
-        headers = {
-            'Authorization': f'Basic{encoded_credentials}',
-            'Content-Type': 'application/json'
-            }
-        response = requests.get(url, headers=headers).json()
-
-        if 'access_token' in response:
-            return response['access_token']
-        else:
-            raise Exception("Failed to get access_token" + response['error_description'])
-        
-    except Exception as e:
-        raise Exception("Failed to get access token:" +str(e))
     
-def get_short_code(payment_method):
-    short_codes = {
-        'Mpesa': '',
-        'Family Bank': '',
-        'Coop Bank': ''
-
+    encoded_credentials = base64.b64decode(f'{consumer_key}:{consumer_secret}'.encode())
+    
+    url = "https://sandbox.safaricom.co.ke/oauth/v1/generate"
+    querystring = {"grant_type":"client_credentials"}
+    payload = ""
+    headers = {
+            "Authorization": "Basic {encoded_credentials}"
         }
-    return short_codes.get(payment_method, '')
+    response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
+    return response.text   
 
-def sendStkPush(payment_id):
+
+def sendStkPush():
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-
-    payment = Payment.query.get(payment_id)
-    if not payment:
-        raise ValueError(f'Payment with ID {payment_id} not found')
-    payment_method = payment.payment_method
-    
-    shortCode = get_short_code(payment_method)
-    
-
-    passkey = ''
-    url = ''
+    shortCode = "9276285"
+    passkey = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'
+    url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
     stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
 
     headers = {
@@ -59,7 +37,7 @@ def sendStkPush(payment_id):
         "BusinessShortCode": shortCode,
         "Password": stk_password,
         "Timestamp": timestamp,
-        "TransactionType": "CustomerPaybillOnline",
+        "TransactionType": "CustomerBuyGoodsOnline",
         "Amount": 1,
         "PartyA": 254741644151,
         "PartyB": shortCode,
@@ -75,3 +53,22 @@ def sendStkPush(payment_id):
     
     except Exception as e:
         print(f'Error: {str(e)}')
+
+def sendStkPush_familyBank():
+    token = generate_access_token()
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    shortCode = '222111'
+    passkey = ''
+    url = ''
+    stk_password = base64.b64decode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
+
+    headers = {
+        'Content-Type': 'application/json'
+        }
+    
+    requestBody = {
+        "BusinessShortCode": shortCode,
+        "BillRefNumber": '752292',
+        "TransactionType": "CustomerPaybillonline",
+
+        }
