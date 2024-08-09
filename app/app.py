@@ -9,6 +9,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_jwt_extended import get_jwt_identity
 from dotenv import load_dotenv
 from app.mpesa import sendStkPush
+from decimal import Decimal
 
 load_dotenv()
 
@@ -20,6 +21,10 @@ db.init_app(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.session_protection = 'strong'
+login_manager.login_view = 'login'
 
 # Initialize database
 with app.app_context():
@@ -50,13 +55,17 @@ def login():
     identifier = data.get('identifier')
     password = data.get('password')
 
+    # Find the user by username or email
     user = User.query.filter((User.username == identifier) | (User.email == identifier)).first()
+    
+    # Check if user exists and the password is correct
     if user and user.check_password(password):
         login_user(user)
         access_token = create_access_token(identity=user.id)
         return jsonify(access_token=access_token), 200
     else:
         return jsonify({"error": "Invalid credentials"}), 401
+
 
 #@app.route('/logout', methods=['POST'])
 #@login_required
@@ -94,15 +103,15 @@ def create_invoice():
         return jsonify({"message": "Invoice created successfully"}), 201
 
 @app.route('/invoices/<int:invoice_number>', methods=['GET'])
-#@jwt_required()
+@jwt_required(refresh=True)
 def get_invoice(invoice_number):
-    #current_user.id = get_jwt_identity()
+    current_user.id = get_jwt_identity()
     invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
     if invoice:
         return jsonify(invoice.to_dict()), 200
     else:
         return jsonify({"error": "Invoice not found"}), 404
-
+        
 @app.route('/payments', methods=['GET', 'POST'])
 def create_payment():
     if request.method == 'GET':
@@ -113,16 +122,30 @@ def create_payment():
         data = request.get_json()
         invoice_number = data.get('invoice_number')
         payment_method = data.get('payment_method')
-        amount = data.get('amount')
+        transaction_code = data.get('transaction_code')
+        amount_str = data.get('amount')
+        payment_date_str = datetime.now().strftime("%Y%m%d")
+        
+        try:
+            amount = Decimal(amount_str)
+        except ValueError:
+            return jsonify({"Error": "Invalid Format"})
+
+        try:
+            payment_date = datetime.strptime(payment_date_str, '%Y%m%d')
+        except ValueError:
+            return jsonify({"error": "Incorrect date format, should be YYYYMMDD"}), 400
 
         invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
         if not invoice:
             return jsonify({"error": "Invoice not found"}), 404
 
         payment = Payment(
-            invoice_id=invoice.id,
+            invoice_number=invoice.invoice_number,
             payment_method=payment_method,
-            amount=amount
+            transaction_code=transaction_code,
+            amount=amount,
+            payment_date=payment_date
         )
         db.session.add(payment)
         db.session.commit()
