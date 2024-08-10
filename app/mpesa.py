@@ -5,8 +5,8 @@ from datetime import datetime
 from app.models import Payment
 
 def generate_access_token():
-    consumer_key = 'ArY61zTkRgKtueKQkaIuOwimKORawCPF1ZxG01TDN3IYAqEl'
-    consumer_secret = '58FxVr4kZOG4j1wtW48KAHuCMzRwsmLrGSWxg39Tw8Y5d4BX2rYdsqQLyBhk2TiZ'
+    consumer_key = ''
+    consumer_secret = ''
 
     
     encoded_credentials = base64.b64decode(f'{consumer_key}:{consumer_secret}'.encode())
