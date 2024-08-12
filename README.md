@@ -7,8 +7,8 @@ Eripay is a simple invoice management system built with Flask and SQLAlchemy. It
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/eripay.git
-cd eripay 
+git clone https://github.com/murega14/Eripay.git
+cd Eripay 
 ```
 
 ### set up a virtual environment
