@@ -21,6 +21,8 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(128), nullable=False)
 
+    roles = db.relationship('Role', secondary='user_roles')
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -30,6 +32,19 @@ class User(db.Model, UserMixin):
     
     def __repr__(self):
         return f'<Customer {self.id}, {self.username}, {self.name}, {self.email}>'
+
+class Role(db.Model):
+    __tablename__ = 'roles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True)
+
+class UserRoles(db.Model):
+    __tablename__ = 'user_roles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id', ondelete='CASCADE'))
 
 class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
