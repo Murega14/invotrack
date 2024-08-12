@@ -180,7 +180,19 @@ def get_customers():
         new_customer = Customer(name=name, email=email)
         db.session.add(new_customer)
         db.session.commit()
-        return jsonify(new_customer.to_dict()), 201    
+        return jsonify(new_customer.to_dict()), 201
+    
+@app.route('/payments/mpesa', methods=['POST'])
+def payMpesa():
+    return lipanampesa()
+
+@app.route('/payments/coopbank', methods=['POST'])
+def payCoop():
+    return lipanacoop()
+
+@app.route('/payments/familybank', methods=['POST'])
+def payFamily():
+    return lipanafamilybank()
 
 
     
