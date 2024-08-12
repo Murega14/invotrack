@@ -3,10 +3,14 @@ import json
 import requests
 from datetime import datetime
 from app.models import Payment
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 def generate_access_token():
-    consumer_key = ''
-    consumer_secret = ''
+    consumer_key = os.getenv('CONSUMER_KEY')
+    consumer_secret = os.getenv('CONSUMER_SECRET')
 
     
     encoded_credentials = base64.b64decode(f'{consumer_key}:{consumer_secret}'.encode())
@@ -25,7 +29,7 @@ def lipanampesa():
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     shortCode = "9276285"
-    passkey = ''
+    passkey = os.getenv('PASSKEY')
     url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
     stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
 
@@ -58,7 +62,7 @@ def lipanafamilybank():
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     shortCode = '222111'
-    passkey = ''
+    passkey = os.getenv('PASSKEY')
     url = ''
     stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
 
@@ -90,7 +94,7 @@ def lipanacoop():
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     shortCode = '400200'
-    passkey = ''
+    passkey = os.getenv('PASSKEY')
     url = ''
     stk_password = base64.b64encode((shortCode + passkey +timestamp).encode('utf-8')).decode('utf-8')
 
