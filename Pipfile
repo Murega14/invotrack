@@ -19,6 +19,8 @@ python-dotenv = "*"
 sqlalchemy = "*"
 datetime = "*"
 requests = "*"
+flask-mpesa = "*"
+flask-wtf = "*"
 
 
 [requires]

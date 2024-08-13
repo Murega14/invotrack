@@ -10,12 +10,20 @@ from flask_jwt_extended import get_jwt_identity
 from dotenv import load_dotenv
 from app.mpesa import *
 from decimal import Decimal
+from flask_mpesa import MpesaAPI
+from flask_wtf.csrf import CSRFProtect
 
 load_dotenv()
 
 app = Flask(__name__)
+
+csrf = CSRFProtect(app)
+mpesa_api = MpesaAPI(app)
 config_name = os.getenv('FLASK_CONFIG', 'default')
 app.config.from_object(config[config_name])
+app.config["API_ENVIRONMENT"] = "sandbox" #sandbox or production
+app.config["APP_KEY"] = os.getenv('CONSUMER_KEY') # App_key from developers portal
+app.config["APP_SECRET"] = os.getenv('CONSUMER_SECRET') #App_Secret from developers portal
 
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -182,17 +190,79 @@ def get_customers():
         db.session.commit()
         return jsonify(new_customer.to_dict()), 201
     
-@app.route('/payments/mpesa', methods=['POST'])
+@app.route('/payments/mpesa')
 def payMpesa():
-    return lipanampesa()
+    data = {
+        "business_shortcode": "",
+        "passcode": "",
+        "phone_number": "254741644151",
+        "reference_code": "",
+        "callback_url": "",
+        "description": 'Eripay'
+        }
+    resp = mpesa_api.MpesaExpress.stk_push(**data)
+    return resp.json()
 
-@app.route('/payments/coopbank', methods=['POST'])
+@app.route('/payment/status', methods=['GET'])
+def callback_url():
+    data = request.get_json()
+    result_code = data["Body"]["stkCallback"]["ResultCode"]
+    
+    #checking the result code
+    if result_code != 0:
+        error_message = data["Body"]["stkCallback"]["ResultDesc"]
+        response_data = {'ResultCode': result_code, 'ResultDesc':error_message}
+        return jsonify(response_data)
+    
+    callback_metadata = data["Body"]["stkCallback"]["CallbackMetadata"]
+    amount = None
+    phone_number = None
+    for item in callback_metadata['item']:
+        if item['Name'] == 'Amount':
+            amount = item['Value']
+        elif item['Name'] == 'PhoneNumber':
+            phone_number = item['Value']
+
+    #save the variables [TODO]
+
+    #return a successful response
+    response_data = {'ResultCode':result_code, 'ResultDesc':'Success'}
+    return jsonify(response_data)
+
+@app.route('/payments/coopbank')
 def payCoop():
-    return lipanacoop()
+    reg_data = {
+        "shortcode": "",
+        "command_id": "CustomerPaybillOnline",
+        "amount": "1",
+        "msisdn": "254741644151",
+        "bill_ref_number": ""    
+        }
+    transaction = mpesa_api.C2B.simulate(**reg_data)
+    #save the variables [TODO]
 
-@app.route('/payments/familybank', methods=['POST'])
+    return jsonify(transaction)
+
+    
+@app.route('/payments/familybank')
 def payFamily():
-    return lipanafamilybank()
+    reg_data = {
+        "shortcode": "",
+        "command_id": "CustomerPaybillOnline",
+        "amount": "1",
+        "msisdn": "254741644151",
+        "bill_ref_number": ""
+        }
+    transaction = mpesa_api.C2B.simulate(**reg_data)
+    #save the variables[TODO]
+
+    return jsonify(transaction)
+
+@app.route('/confirmation', methods=['POST'])
+def c2b_confirmation():
+    request_data = request.data
+
+    return jsonify(request_data)
 
 
     
