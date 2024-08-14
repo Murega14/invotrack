@@ -21,7 +21,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), nullable=False, unique=True)
     password_hash = db.Column(db.String(128), nullable=False)
 
-    roles = db.relationship('Role', secondary='user_roles')
+    roles = db.relationship('Role', secondary='user_roles', backref=db.backref('users', lazy='dynamic'))
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -52,13 +52,14 @@ class Customer(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), nullable=False, unique=True)
+    phone_number = db.Column(db.Integer, nullable=False, unique=True)
 
     invoices = db.relationship('Invoice', back_populates='customer')
 
     serialize_rules = ('-invoices.customer', '-payments.customer',)
 
     def __repr__(self):
-        return f'<Customer {self.id}, {self.name}, {self.email}>'
+        return f'<Customer {self.id}, {self.name}, {self.email}, {self.phone_number}>'
 
 
 class Invoice(db.Model, SerializerMixin):
@@ -70,7 +71,7 @@ class Invoice(db.Model, SerializerMixin):
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date_issued = db.Column(db.Date, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.Enum('unpaid', 'paid', name='invoice_status'), default='unpaid')
+    status = db.Column(db.Enum('unpaid', 'paid', 'overdue', name='invoice_status'), default='unpaid')
     
     customer = db.relationship('Customer', back_populates='invoices')
     payments = db.relationship('Payment', back_populates='invoice')
@@ -78,7 +79,7 @@ class Invoice(db.Model, SerializerMixin):
     serialize_rules = ('-payments.invoice', '-customers.invoice',)
 
     def __repr__(self):
-        return f'<Invoice {self.id}, {self.invoice_number}, {self.customer_name}, {self.amount}, {self.status}>'
+        return f'<Invoice {self.id}, {self.invoice_number}, {self.customer_name}, {self.amount}, {self.date_issued}, {self.due_date}, {self.status}>'
 
 class Payment(db.Model, SerializerMixin):
     __tablename__ = 'payments'

@@ -1,18 +1,16 @@
 from app.app import app  # Import the app object correctly
-from app.models import db, User, Customer, Invoice, Payment
-from datetime import datetime
+from app.models import db, Role
 
-def populate_data():
+def create_roles():
     with app.app_context():
-        # Clear existing data
-        db.session.query(User).delete()
-        db.session.query(Customer).delete()
-        db.session.query(Invoice).delete()
-        db.session.query(Payment).delete()
+        admin_role = Role(name='Admin')
+        user_role = Role(name='User')
+
+        db.session.add(admin_role)
+        db.session.add(user_role)
         db.session.commit()
-        
-        
-        print("Database populated successfully!")
+
+        print("Roles created successfully!")
 
 if __name__ == '__main__':
-    populate_data()
+    create_roles()

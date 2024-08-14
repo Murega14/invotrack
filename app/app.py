@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
-from app.models import db, Customer, Invoice, Payment, User
+from app.models import *
 import os
 from datetime import datetime
 from config import config
@@ -12,6 +12,7 @@ from app.mpesa import *
 from decimal import Decimal
 from flask_mpesa import MpesaAPI
 from flask_wtf.csrf import CSRFProtect
+from functools import wraps
 
 load_dotenv()
 
@@ -22,8 +23,8 @@ mpesa_api = MpesaAPI(app)
 config_name = os.getenv('FLASK_CONFIG', 'default')
 app.config.from_object(config[config_name])
 app.config["API_ENVIRONMENT"] = "sandbox" #sandbox or production
-app.config["APP_KEY"] = os.getenv('CONSUMER_KEY') # App_key from developers portal
-app.config["APP_SECRET"] = os.getenv('CONSUMER_SECRET') #App_Secret from developers portal
+app.config["APP_KEY"] = 'vbxsneeZ9IMFoyKKIgOIQQZFlawAADnP' # App_key from developers portal
+app.config["APP_SECRET"] = 'WAzDhQVhitIXwiTc' #App_Secret from developers portal
 
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -40,6 +41,19 @@ login_manager.login_view = 'login'
 with app.app_context():
     db.create_all()
 
+def role_required(role_name):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+
+            if any(role.name == role_name for role in user.roles):
+                return func(*args, **kwargs)
+            else:
+                return jsonify({"error": "Unauthorized access"}), 400
+        return wrapper
+    return decorator
 
 
 @app.route('/signup', methods=['POST'])
@@ -49,6 +63,7 @@ def signup():
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
+    role_name = data.get('role', 'User')
 
     if User.query.filter((User.username == username) | (User.email == email)).first():
         return jsonify({"error": "Username or email already exists"}), 400
@@ -57,6 +72,15 @@ def signup():
     new_user.set_password(password)
     db.session.add(new_user)
     db.session.commit()
+
+    role = Role.query.filter_by(name=role_name).first()
+    if not role:
+        return jsonify({'error': 'role not found'}), 400
+    
+    user_role = UserRoles(user_id=new_user.id, role_id=role.id)
+    db.session.add(user_role)
+    db.session.commit()
+
     return jsonify({"message": "User created successfully"}), 201
 
 @app.route('/login', methods=['POST'])
@@ -84,9 +108,9 @@ def logout():
     return jsonify({"message": "Logged out successfully"}), 200
 
 @app.route('/invoices', methods=['POST', 'GET'])
-@jwt_required()
+#@jwt_required()
 def create_invoice():
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     if request.method == 'GET':
         invoices = Invoice.query.all()
         return jsonify([invoice.to_dict() for invoice in invoices]), 200
@@ -115,9 +139,9 @@ def create_invoice():
         return jsonify({"message": "Invoice created successfully"}), 201
 
 @app.route('/invoices/<int:invoice_number>', methods=['GET'])
-@jwt_required()
+#@jwt_required()
 def get_invoice(invoice_number):
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
     if invoice:
         return jsonify(invoice.to_dict()), 200
@@ -125,9 +149,9 @@ def get_invoice(invoice_number):
         return jsonify({"error": "Invoice not found"}), 404
         
 @app.route('/payments', methods=['GET', 'POST'])
-@jwt_required()
+#@jwt_required()
 def create_payment():
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     if request.method == 'GET':
         payments = Payment.query.all()
         return jsonify([payment.to_dict() for payment in payments]), 201
@@ -170,9 +194,9 @@ def create_payment():
         return jsonify(payment.to_dict()), 201
 
 @app.route('/customers', methods=['GET', 'POST'])
-@jwt_required()
+#@jwt_required()
 def get_customers():
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     if request.method == 'GET':
         customers = Customer.query.all()
         return jsonify([customer.to_dict() for customer in customers]), 200
@@ -181,27 +205,58 @@ def get_customers():
         data = request.get_json()
         name = data.get('name')
         email = data.get('email')
+        phone_number = data.get('email')
+
+        if phone_number.startsWith('0'):
+            phone_number = '254' + phone_number[1:]
+        elif not phone_number.startsWith('0'):
+            return jsonify({'Error: Phone number should start with 0 or 254'}), 400
 
         if not name or not email:
             return jsonify({"error": "Name and email are required"}), 400
 
-        new_customer = Customer(name=name, email=email)
+        new_customer = Customer(name=name, email=email, phone_number=phone_number)
         db.session.add(new_customer)
         db.session.commit()
         return jsonify(new_customer.to_dict()), 201
     
+@app.route('/invoices/my_invoices', methods=['GET'])
+def getIndividualInvoice():
+    customer = Customer.query.get(id)
+    if not customer:
+        return jsonify({'error: customer not found'}), 400
+
+    invoices = Invoice.query.filter_by(customer_name=customer.name).all()
+    if not invoices:
+        return jsonify({'error: "No invoices found'}), 400
+    
+    return jsonify([invoice.to_dict() for invoice in invoices]), 200
+
+@app.route('/payments/my_payments', methods=['GET'])
+def getIndividualPayments():
+    customer = Customer.query.get(id)
+    if not customer:
+        return jsonify({'error: customer not found'}), 400
+    
+    payments = Payment.query.filter_by(customer_name=customer.name).all()
+    if not payments:
+        return jsonify({'error: no payments found'})
+    
+    return jsonify([payment.to_dict() for payment in payments]), 200
+
+
 @app.route('/payments/mpesa')
 def payMpesa():
     data = {
-        "business_shortcode": "",
-        "passcode": "",
+        "business_shortcode": "174379",
+        "passcode": "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919",
         "phone_number": "254741644151",
-        "reference_code": "",
-        "callback_url": "",
+        "amount": "1",
+        "callback_url": "https://775b-105-163-158-77.ngrok-free.app",
         "description": 'Eripay'
         }
     resp = mpesa_api.MpesaExpress.stk_push(**data)
-    return resp.json()
+    return resp
 
 @app.route('/payment/status', methods=['GET'])
 def callback_url():
@@ -271,4 +326,4 @@ print(f"Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)
+    app.run(port=80, debug=True)
