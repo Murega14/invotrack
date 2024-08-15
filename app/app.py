@@ -110,10 +110,10 @@ def logout():
     return jsonify({"message": "Logged out successfully"}), 200
 
 @app.route('/invoices', methods=['POST', 'GET'])
-@jwt_required()
-@role_required('Admin')
+#@jwt_required()
+#@role_required('Admin')
 def create_invoice():
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     if request.method == 'GET':
         invoices = Invoice.query.all()
         return jsonify([invoice.to_dict() for invoice in invoices]), 200
@@ -142,9 +142,9 @@ def create_invoice():
         return jsonify({"message": "Invoice created successfully"}), 201
 
 @app.route('/invoices/<int:invoice_number>', methods=['GET'])
-@jwt_required()
+#@jwt_required()
 def get_invoice(invoice_number):
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
     if invoice:
         return jsonify(invoice.to_dict()), 200
@@ -152,10 +152,10 @@ def get_invoice(invoice_number):
         return jsonify({"error": "Invoice not found"}), 404
         
 @app.route('/payments', methods=['GET', 'POST'])
-@jwt_required()
-@role_required('Admin')
+#@jwt_required()
+#@role_required('Admin')
 def create_payment():
-    current_user.id = get_jwt_identity()
+    #current_user.id = get_jwt_identity()
     if request.method == 'GET':
         payments = Payment.query.all()
         return jsonify([payment.to_dict() for payment in payments]), 201
@@ -198,10 +198,10 @@ def create_payment():
         return jsonify(payment.to_dict()), 201
 
 @app.route('/customers', methods=['GET', 'POST'])
-@jwt_required()
-@role_required('Admin')
+#@jwt_required()
+#@role_required('Admin')
 def get_customers():
-    current_user_id = get_jwt_identity()
+    #current_user_id = get_jwt_identity()
     
     if request.method == 'GET':
         customers = Customer.query.all()
