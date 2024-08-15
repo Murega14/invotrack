@@ -13,6 +13,7 @@ from decimal import Decimal
 from flask_mpesa import MpesaAPI
 from flask_wtf.csrf import CSRFProtect
 from functools import wraps
+from flask_cors import CORS
 
 load_dotenv()
 
@@ -29,6 +30,7 @@ app.config["APP_SECRET"] = 'WAzDhQVhitIXwiTc' #App_Secret from developers portal
 db.init_app(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
+CORS(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
