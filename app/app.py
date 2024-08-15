@@ -18,7 +18,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-csrf = CSRFProtect(app)
+#csrf = CSRFProtect(app)
 mpesa_api = MpesaAPI(app)
 config_name = os.getenv('FLASK_CONFIG', 'default')
 app.config.from_object(config[config_name])
@@ -53,6 +53,10 @@ def role_required(role_name):
         return wrapper
     return decorator
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -61,7 +65,7 @@ def signup():
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
-    role_name = data.get('role', 'User')
+    role_name = data.get('role_name')
 
     if User.query.filter((User.username == username) | (User.email == email)).first():
         return jsonify({"error": "Username or email already exists"}), 400
@@ -75,7 +79,7 @@ def signup():
     if not role:
         return jsonify({'error': 'role not found'}), 400
     
-    user_role = UserRoles(user_id=new_user.id, role_id=role.id)
+    user_role = UserRoles(user_name=new_user.name, role_name=role.name)
     db.session.add(user_role)
     db.session.commit()
 
@@ -139,7 +143,6 @@ def create_invoice():
 
 @app.route('/invoices/<int:invoice_number>', methods=['GET'])
 @jwt_required()
-@role_required('Admin', 'User')
 def get_invoice(invoice_number):
     current_user.id = get_jwt_identity()
     invoice = Invoice.query.filter_by(invoice_number=invoice_number).first()
@@ -198,7 +201,8 @@ def create_payment():
 @jwt_required()
 @role_required('Admin')
 def get_customers():
-    current_user.id = get_jwt_identity()
+    current_user_id = get_jwt_identity()
+    
     if request.method == 'GET':
         customers = Customer.query.all()
         return jsonify([customer.to_dict() for customer in customers]), 200
@@ -207,12 +211,13 @@ def get_customers():
         data = request.get_json()
         name = data.get('name')
         email = data.get('email')
-        phone_number = data.get('email')
+        phone_number = data.get('phone_number')
 
-        if phone_number.startsWith('0'):
+        if not phone_number.startswith('0') and not phone_number.startswith('254'):
+            return jsonify({'Error': 'Phone number should start with 0 or 254'}), 400
+        
+        if phone_number.startswith('0'):
             phone_number = '254' + phone_number[1:]
-        elif not phone_number.startsWith('0'):
-            return jsonify({'Error: Phone number should start with 0 or 254'}), 400
 
         if not name or not email:
             return jsonify({"error": "Name and email are required"}), 400
@@ -221,6 +226,7 @@ def get_customers():
         db.session.add(new_customer)
         db.session.commit()
         return jsonify(new_customer.to_dict()), 201
+
     
 @app.route('/invoices/my_invoices', methods=['GET'])
 def getIndividualInvoice():
