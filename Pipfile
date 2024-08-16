@@ -20,8 +20,7 @@ sqlalchemy = "*"
 datetime = "*"
 requests = "*"
 flask-mpesa = "*"
-flask-wtf = "*"
-
+flask-cors = "*"
 
 [requires]
 python_version = "3.12.1"
