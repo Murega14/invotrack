@@ -329,6 +329,16 @@ def c2b_confirmation():
 
     return jsonify(request_data)
 
+@app.route('/invoices/metrics', methods=['GET'])
+def get_invoice_metrics():
+    total_paid = db.session.query(db.func.sum(Invoice.amount)).filter_by(status='paid').scalar() or 0
+    total_unpaid = db.session.query(db.func.sum(Invoice.amount)).filter_by(status='unpaid').scalar() or 0
+
+    return jsonify({
+        'total_paid': float(total_paid),
+        'total_unpaid': float(total_unpaid)
+    }), 200
+
 
     
 print(f"Running in {config_name} mode")
