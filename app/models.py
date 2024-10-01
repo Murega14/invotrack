@@ -12,40 +12,6 @@ metadata = MetaData(naming_convention={
 db = SQLAlchemy(metadata=metadata)
 
 # Database Models
-class User(db.Model, UserMixin):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False, unique=True)
-    name = db.Column(db.String(80), nullable=False)
-    email = db.Column(db.String(120), nullable=False, unique=True)
-    password_hash = db.Column(db.String(128), nullable=False)
-
-    roles = db.relationship('Role', secondary='user_roles', backref=db.backref('users', lazy='dynamic'))
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-    
-    
-    def __repr__(self):
-        return f'<Customer {self.id}, {self.username}, {self.name}, {self.email}>'
-
-class Role(db.Model):
-    __tablename__ = 'roles'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True)
-
-class UserRoles(db.Model):
-    __tablename__ = 'user_roles'
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_name = db.Column(db.String(), db.ForeignKey('users.name', ondelete='CASCADE'))
-    role_name = db.Column(db.String(), db.ForeignKey('roles.name', ondelete='CASCADE'))
-
 class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
 
@@ -67,11 +33,10 @@ class Invoice(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     customer_name = db.Column(db.Integer, db.ForeignKey('customers.name'), nullable=False)
-    invoice_number = db.Column(db.Integer, nullable=False, unique=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date_issued = db.Column(db.Date, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.Enum('unpaid', 'paid', 'overdue', name='invoice_status'), default='unpaid')
+    status = db.Column(db.Enum('unpaid', 'paid', 'overdue', 'partial payment', name='invoice_status'), default='unpaid')
     
     customer = db.relationship('Customer', back_populates='invoices')
     payments = db.relationship('Payment', back_populates='invoice')
