@@ -17,8 +17,8 @@ def init_app(app):
     pass
 
 class DevelopmentConfig(Config):
-        DEBUG = True
-        SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URI')
+    DEBUG = True
+    SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URI')
 
 class TestingConfig(Config):
     DEBUG = True

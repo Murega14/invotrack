@@ -1,2 +1,6 @@
 .env
 env/
+__pycache__
+.gitignore
+client_secret.json
+.db

@@ -2,8 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData, Enum
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_serializer import SerializerMixin
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import UserMixin
+
 
 metadata = MetaData(naming_convention={
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
@@ -12,6 +11,38 @@ metadata = MetaData(naming_convention={
 db = SQLAlchemy(metadata=metadata)
 
 # Database Models
+class User(db.Model):
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    google_id = db.Column(db.String(), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    
+    oauth_sessions = db.relationship('OAuthSession', backref='user', lazy=True)
+    
+class OAuthSession(db.Model):
+    __tablename__ = 'oauthsession'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    access_token = db.Column(db.String(200), nullable=False)
+    refresh_token = db.Column(db.String(200), nullable=False)
+    token_expiry = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    
+    def is_token_expired(self):
+        return self.token_expiry < db.func.current_timestamp()
+    
+    def update_tokens(self, access_token, token_expiry, refresh_token=None):
+        self.access_token = access_token
+        self.token_expiry = token_expiry
+        if refresh_token:
+            self.refresh_token = refresh_token
+        db.session.commit()
+        
+
 class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
 
@@ -32,6 +63,8 @@ class Invoice(db.Model, SerializerMixin):
     __tablename__ = 'invoices'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    invoice_number = db.Column(db.Integer, nullable=False, unique=True)
     customer_name = db.Column(db.Integer, db.ForeignKey('customers.name'), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date_issued = db.Column(db.Date, nullable=False)
@@ -40,6 +73,7 @@ class Invoice(db.Model, SerializerMixin):
     
     customer = db.relationship('Customer', back_populates='invoices')
     payments = db.relationship('Payment', back_populates='invoice')
+    users = db.relationship('User', backref='invoices')
 
     serialize_rules = ('-payments.invoice', '-customers.invoice',)
 
