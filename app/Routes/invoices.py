@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, session, abort
+from flask import Blueprint, jsonify, session, request
 from app.models import Invoice, User, db
 from .authentication import login_is_required
 
@@ -26,4 +26,28 @@ def user_invoices():
     ]
     
     return jsonify(invoices_data), 200
+
+@invoices.route('/add_invoice', methods=['POST'])
+@login_is_required
+def create_invoice():
+    data = request.get_json()
+    invoice_number = data.get('invoice_number')
+    customer_name = data.get('customer_name')
+    amount = data.get('amount')
+    date_issued = data.get('date_issued')
+    due_date = data.get('due_date')
+    
+    if not all([invoice_number, customer_name, amount, date_issued, due_date]):
+        return jsonify({"error": "all fields required"}), 400
+    
+    newInvoice = Invoice(invoice_number=invoice_number,
+                         customer_name=customer_name,
+                         amount=amount,
+                         date_issued=date_issued,
+                         due_date=due_date)
+    db.session.add(newInvoice)
+    db.session.commit()
+    
+    return jsonify({"message": f"invoice {invoice_number} has been created"}), 201
+
 

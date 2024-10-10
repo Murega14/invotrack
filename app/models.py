@@ -47,12 +47,13 @@ class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), nullable=False, unique=True)
     phone_number = db.Column(db.Integer, nullable=False, unique=True)
 
     invoices = db.relationship('Invoice', back_populates='customer')
-
+    users = db.relationship('User', backref='customers')
     serialize_rules = ('-invoices.customer', '-payments.customer',)
 
     def __repr__(self):
@@ -63,7 +64,6 @@ class Invoice(db.Model, SerializerMixin):
     __tablename__ = 'invoices'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     invoice_number = db.Column(db.Integer, nullable=False, unique=True)
     customer_name = db.Column(db.Integer, db.ForeignKey('customers.name'), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
@@ -84,6 +84,7 @@ class Payment(db.Model, SerializerMixin):
     __tablename__ = 'payments'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     invoice_number = db.Column(db.Integer, db.ForeignKey('invoices.invoice_number'), nullable=False)
     payment_method = db.Column(db.Enum('Family Bank', 'Coop Bank', 'Mpesa', name='payment_method'))
     transaction_code = db.Column(db.String, nullable=False)
@@ -91,7 +92,7 @@ class Payment(db.Model, SerializerMixin):
     payment_date = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     invoice = db.relationship('Invoice', back_populates='payments')
-
+    user = db.relationship('User', backref='payments')
     serialize_rules = ('-invoices.payment', '-customers.payment',)
 
     def __repr__(self):
