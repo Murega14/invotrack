@@ -6,7 +6,7 @@ customers = Blueprint('customers', __name__)
 
 @customers.route('/customers', methods=['POST', 'GET'])
 @login_is_required
-def customers():
+def add_customers():
     if request.method == 'POST':
         user_id = session.get('user_id')
         data = request.get_json()

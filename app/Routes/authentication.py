@@ -86,7 +86,7 @@ def callback():
         
     db.session.commit()
     
-    return redirect("/protected_route")
+    return redirect("/dashboard")
 
 @authentication.route("/logout")
 @login_is_required
