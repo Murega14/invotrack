@@ -3,9 +3,37 @@ from app.models import Invoice, User, Customer, db
 from .authentication import login_is_required
 from datetime import datetime
 from ..templates import *
-
+import random
+from datetime import timedelta
 
 invoices = Blueprint('invoices', __name__)
+
+def generate_random_invoices(user_id, num_invoices=5):
+    customers = Customer.query.filter_by(user_id=user_id).all()
+    if not customers:
+        return
+    
+    for _ in range(num_invoices):
+        invoice_number = f"INV-{random.randint(1000, 9999)}"
+        amount = round(random.uniform(100, 1000), 0)
+        date_issued = datetime.today() - timedelta(days=random.randint(0, 30))
+        due_date = date_issued + timedelta(days=random.randint(15, 45))
+        status = random.choice(['unpaid', 'paid', 'overdue', 'partial payment'])
+
+        new_invoice = Invoice(
+            user_id=user_id,
+            invoice_number=invoice_number,
+            amount=amount,
+            date_issued=date_issued,
+            due_date=due_date,
+            status=status
+        )
+        db.session.add(new_invoice)
+    
+    # Commit the invoices to the database
+    db.session.commit()
+
+
 
 @invoices.route('/view_invoice', methods=['GET'])
 @login_is_required
@@ -18,10 +46,16 @@ def user_invoices():
         return jsonify({"error": "user not found"}), 404
     
     userInvoices = Invoice.query.filter_by(user_id=user.id).all()
+    
+    if len(userInvoices) == 0:
+        generate_random_invoices(user_id=user.id, num_invoices=5)
+        # Fetch the invoices again after generating
+        userInvoices = Invoice.query.filter_by(user_id=user.id).all()
+    
     invoices_data = [{
         "id": invoice.id,
         "invoice_number": invoice.invoice_number,
-        "customer_name": invoice.customer.name,
+        "customer_name": invoice.user.name,
         "amount": float(invoice.amount),
         "date_issued": invoice.date_issued.isoformat(),
         "due_date": invoice.due_date.isoformat(),

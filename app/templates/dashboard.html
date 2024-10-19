@@ -7,9 +7,10 @@
         <nav class="p-4">
             <ul class="flex justify-around md:flex-col md:space-y-2">
                 <li><a href="{{ url_for('dashboard') }}" class="text-blue-600 hover:text-blue-800 font-medium">Dashboard</a></li>
-                <li><a href="#" class="text-gray-600 hover:text-blue-600">Profile</a></li>
+                <li><a href="{{ url_for('authentication.user_profile')}}" class="text-gray-600 hover:text-blue-600">Profile</a></li>
                 <li><a href="{{ url_for('invoices.user_invoices') }}" class="text-gray-600 hover:text-blue-600">Invoices</a></li>
                 <li><a href="#" class="text-gray-600 hover:text-blue-600">Payments</a></li>
+                <li><a href="{{ url_for('customers.register_customer') }}" class="text-blue-600 hover:text-blue-800">Register Business</a></li>
             </ul>
         </nav>
     </aside>
@@ -19,9 +20,10 @@
         <nav class="p-4">
             <ul class="space-y-2">
                 <li><a href="{{ url_for('dashboard') }}" class="block py-2 px-4 rounded text-blue-600 bg-blue-100 font-medium">Dashboard</a></li>
-                <li><a href="#" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Profile</a></li>
+                <li><a href="{{ url_for('authentication.user_profile')}}" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Profile</a></li>
                 <li><a href="{{ url_for('invoices.user_invoices') }}" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Invoices</a></li>
                 <li><a href="#" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Payments</a></li>
+                <li><a href="{{ url_for('customers.register_customer') }}" class="text-blue-600 hover:text-blue-800">Register Business</a></li>
             </ul>
         </nav>
     </aside>
@@ -38,6 +40,10 @@
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
                 <h2 class="text-xl font-semibold mb-2 text-gray-700">Total Amount Paid</h2>
                 <p class="text-3xl font-bold text-green-600">Kshs {{ total_paid }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">Total Amount Unpaid</h2>
+                <p class="text-3xl font-bold text-red-600">Kshs {{ total_unpaid }}</p>
             </div>
         </div>
         

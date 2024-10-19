@@ -28,7 +28,7 @@ app.secret_key = os.getenv('SECRET_KEY')
 admin = Admin(app, name='Admin Panel', template_mode='bootstrap4')
 app.register_blueprint(authentication, url_prefix="")
 app.register_blueprint(invoices, url_prefix="/invoices")
-app.register_blueprint(customers, url_prefix="")
+app.register_blueprint(customers, url_prefix="/customers")
 admin.add_view(UserAdmin(User, db.session))
 admin.add_view(ModelView(Customer, db.session))
 admin.add_view(InvoiceAdmin(Invoice, db.session))
@@ -42,11 +42,13 @@ def index():
 def dashboard():
     outstanding_invoices = Invoice.query.filter(Invoice.status != 'paid').count()
 
-    total_paid = db.session.query(func.sum(Payment.amount)).scalar() or 0
-
+    total_paid = db.session.query(func.sum(Invoice.amount)).filter(Invoice.status == 'paid').scalar() or 0
+    total_unpaid = db.session.query(func.sum(Invoice.amount)).filter(Invoice.status != 'paid').scalar() or 0
+    
     return render_template('dashboard.html', 
                            outstanding_invoices=outstanding_invoices, 
-                           total_paid="{:.2f}".format(total_paid))
+                           total_paid="{:,.2f}".format(total_paid),
+                           total_unpaid="{:,.2f}".format(total_unpaid))
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,7 +1,7 @@
 import os
 import pathlib
 import requests
-from flask import Blueprint, session, abort, redirect, request, jsonify
+from flask import Blueprint, session, abort, redirect, request, flash, url_for, render_template
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
@@ -94,16 +94,38 @@ def logout():
     session.clear()
     return redirect("/login")
 
-@authentication.route('/user_profile', methods=['POST'])
+
+@authentication.route('/user_profile', methods=['GET', 'POST'])
 @login_is_required
 def user_profile():
-    data = request.get_json()
-    name = session.get("name")
-    email = session.get("google_id")
-    phone_number = data.get("phone_number")
+    google_id = session.get('google_id')
+    user = User.query.filter_by(google_id=google_id).first()
     
-    customer = Customer(name=name, email=email, phone_number=phone_number)
-    db.session.add(customer)
-    db.session.commit()
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('authentication.login'))
     
-    return jsonify({"message": "User details added successfully"}), 201
+    customer = Customer.query.filter_by(email=user.email).first()
+    
+    if request.method == 'POST':
+        phone_number = request.form.get('phone_number')
+        
+        if not phone_number:
+            flash('Phone number is required', 'error')
+        else:
+            if not customer:
+                customer = Customer(name=user.name, email=user.email, phone_number=phone_number)
+                db.session.add(customer)
+            else:
+                customer.phone_number = phone_number
+            
+            try:
+                db.session.commit()
+                flash('User details updated successfully', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'An error occurred: {str(e)}', 'error')
+        
+        return redirect(url_for('authentication.user_profile'))
+    
+    return render_template('profile.html', user=user, customer=customer)
