@@ -31,7 +31,6 @@ pipenv shell
 ```env
 FLASK_APP=app.py
 FLASK_ENV=development
-DATABASE_URI=sqlite:///dev_eripay.db
 ```
 
 ### Initialize the Database
