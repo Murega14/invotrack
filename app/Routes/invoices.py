@@ -8,17 +8,16 @@ from datetime import timedelta
 
 invoices = Blueprint('invoices', __name__)
 
-def generate_random_invoices(user_id, num_invoices=5):
-    customers = Customer.query.filter_by(user_id=user_id).all()
-    if not customers:
-        return
+def generate_random_invoices(user_id, num_invoices=10):
+    user = User.query.filter_by(id=user_id).first()
+   
     
     for _ in range(num_invoices):
         invoice_number = f"INV-{random.randint(1000, 9999)}"
         amount = round(random.uniform(100, 1000), 0)
         date_issued = datetime.today() - timedelta(days=random.randint(0, 30))
         due_date = date_issued + timedelta(days=random.randint(15, 45))
-        status = random.choice(['unpaid', 'paid', 'overdue', 'partial payment'])
+        status = random.choice(['unpaid', 'paid', 'overdue'])
 
         new_invoice = Invoice(
             user_id=user_id,
@@ -48,7 +47,7 @@ def user_invoices():
     userInvoices = Invoice.query.filter_by(user_id=user.id).all()
     
     if len(userInvoices) == 0:
-        generate_random_invoices(user_id=user.id, num_invoices=5)
+        generate_random_invoices(user_id=user.id)
         # Fetch the invoices again after generating
         userInvoices = Invoice.query.filter_by(user_id=user.id).all()
     
