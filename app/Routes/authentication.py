@@ -1,5 +1,5 @@
 import os
-import pathlib
+import json
 import requests
 from flask import Blueprint, session, abort, redirect, request, flash, url_for, render_template
 from google.oauth2 import id_token
@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from app.models import Customer, db, User, OAuthSession
 from datetime import datetime
 from functools import wraps
+import tempfile
 
 load_dotenv()
 
@@ -17,13 +18,28 @@ authentication = Blueprint("authentication", __name__)
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")
+client_secrets_data = os.getenv("CLIENT_SECRETS")
+
+if not client_secrets_data:
+    raise FileNotFoundError("CLIENT_SECRETS environment variable is not set or is empty")
+
+try:
+    client_secrets_dict = json.loads(client_secrets_data)
+except json.JSONDecodeError as e:
+    raise ValueError("CLIENT_SECRETS contains invalid JSON") from e
+
+with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode='w') as temp_file:
+    temp_file_path = temp_file.name
+    json.dump(client_secrets_dict, temp_file)
 
 flow = Flow.from_client_secrets_file(
-    client_secrets_file=client_secrets_file,
+    temp_file_path,
     scopes=["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email", "openid"],
     redirect_uri="http://127.0.0.1:5000/callback"
 )
+
+os.unlink(temp_file_path)
+
 
 def login_is_required(function):
     @wraps(function)
