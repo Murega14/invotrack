@@ -35,7 +35,7 @@ with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode='w') as temp
 flow = Flow.from_client_secrets_file(
     temp_file_path,
     scopes=["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email", "openid"],
-    redirect_uri="https://invotrack-2.onrender.com"
+    redirect_uri="https://invotrack-2.onrender.com/callback"
 )
 
 os.unlink(temp_file_path)
