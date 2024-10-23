@@ -9,7 +9,7 @@
                 <li><a href="{{ url_for('dashboard') }}" class="text-blue-600 hover:text-blue-800 font-medium">Dashboard</a></li>
                 <li><a href="{{ url_for('authentication.user_profile')}}" class="text-gray-600 hover:text-blue-600">Profile</a></li>
                 <li><a href="{{ url_for('invoices.user_invoices') }}" class="text-gray-600 hover:text-blue-600">Invoices</a></li>
-                <li><a href="#" class="text-gray-600 hover:text-blue-600">Payments</a></li>
+                <li><a href="{{ url_for('payments.view_payments') }}" class="text-gray-600 hover:text-blue-600">Payments</a></li>
                 <li><a href="{{ url_for('customers.register_customer') }}" class="text-blue-600 hover:text-blue-800">Register Business</a></li>
             </ul>
         </nav>
@@ -22,7 +22,7 @@
                 <li><a href="{{ url_for('dashboard') }}" class="block py-2 px-4 rounded text-blue-600 bg-blue-100 font-medium">Dashboard</a></li>
                 <li><a href="{{ url_for('authentication.user_profile')}}" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Profile</a></li>
                 <li><a href="{{ url_for('invoices.user_invoices') }}" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Invoices</a></li>
-                <li><a href="#" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Payments</a></li>
+                <li><a href="{{ url_for('payments.view_payments') }}" class="block py-2 px-4 rounded text-gray-600 hover:bg-gray-100 hover:text-blue-600">Payments</a></li>
                 <li><a href="{{ url_for('customers.register_customer') }}" class="text-blue-600 hover:text-blue-800">Register Business</a></li>
             </ul>
         </nav>

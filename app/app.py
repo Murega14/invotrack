@@ -4,6 +4,7 @@ from flask import Flask, render_template, session, jsonify, flash, redirect
 from app.Routes.authentication import authentication,login_is_required
 from app.Routes.invoices import invoices
 from app.Routes.customers import customers
+from .Routes.payments import payments
 from .models import *
 from config import config
 from flask_migrate import Migrate
@@ -29,6 +30,8 @@ admin = Admin(app, name='Admin Panel', template_mode='bootstrap4')
 app.register_blueprint(authentication, url_prefix="")
 app.register_blueprint(invoices, url_prefix="/invoices")
 app.register_blueprint(customers, url_prefix="/customers")
+app.register_blueprint(payments, url_prefix="/payments")
+
 admin.add_view(UserAdmin(User, db.session))
 admin.add_view(ModelView(Customer, db.session))
 admin.add_view(InvoiceAdmin(Invoice, db.session))

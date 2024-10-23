@@ -2,6 +2,5 @@
 env/
 .gitignore
 client_secret.json
-.db
+__pycache__
 *.pyc
-instance/
