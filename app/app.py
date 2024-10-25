@@ -129,7 +129,7 @@ class SchedulerService:
         self.scheduler.add_job(
             id='update_overdue_invoices',
             func=self.update_invoice_status,
-            trigger=CronTrigger(hour=19, minute=0),
+            trigger=CronTrigger(hour=19, minute=10),
             replace_existing=True
         )
         
@@ -137,7 +137,7 @@ class SchedulerService:
         self.scheduler.add_job(
             id='send_due_invoice_notifications',
             func=self.send_due_notifications,
-            trigger=CronTrigger(hour=19, minute=0),
+            trigger=CronTrigger(hour=19, minute=10),
             replace_existing=True
         )
 
