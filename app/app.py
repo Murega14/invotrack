@@ -22,50 +22,51 @@ from config import Config
 
 load_dotenv()
 
-# Initialize extensions
 db = SQLAlchemy()
 mail = Mail()
 migrate = Migrate()
 admin = Admin(name='Admin Panel', template_mode='bootstrap4')
+scheduler = APScheduler()
 
-class SchedulerService:
-    def __init__(self, app=None, db=None, mail=None):
-        self.scheduler = APScheduler()
-        self.db = db
-        self.mail = mail
-        if app is not None:
-            self.init_app(app)
+def create_app():
+    app = Flask(__name__)
     
-    def init_app(self, app):
-        app.config.from_object(Config)
-        self.scheduler.init_app(app)
-        self.app = app
-        
-        # Register jobs
-        self.register_jobs()
-        
-        # Start scheduler
-        self.scheduler.start()
+    # Configuration
+    app.config.update(
+        SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL'),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        SECRET_KEY=os.getenv('SECRET_KEY'),
+        MAIL_SERVER=os.getenv('MAIL_SERVER', 'smtp.gmail.com'),
+        MAIL_PORT=int(os.getenv('MAIL_PORT', 587)),
+        MAIL_USE_TLS=os.getenv('MAIL_USE_TLS', 'true').lower() == 'true',
+        MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+        MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
+        SCHEDULER_API_ENABLED=True
+    )
     
-    @contextmanager
-    def app_context(self):
-        """Context manager to handle app context"""
-        with self.app.app_context():
+    # Initialize extensions with app
+    db.init_app(app)
+    mail.init_app(app)
+    migrate.init_app(app, db)
+    admin.init_app(app)
+    scheduler.init_app(app)
+    
+    # Register admin views
+    admin.add_view(UserAdmin(User, db.session))
+    admin.add_view(ModelView(Customer, db.session))
+    admin.add_view(InvoiceAdmin(Invoice, db.session))
+    admin.add_view(ModelView(Payment, db.session))
+    
+    app.register_blueprint(authentication)
+    app.register_blueprint(invoices, url_prefix="/invoices")
+    app.register_blueprint(customers, url_prefix="/customers")
+    app.register_blueprint(payments, url_prefix="/payments")
+    
+    def update_invoice_status():
+        """Update overdue invoices."""
+        with app.app_context():
             try:
-                yield
-            except Exception as e:
-                self.app.logger.error(f"Scheduler error: {str(e)}")
-                if self.db:
-                    self.db.session.rollback()
-            finally:
-                if self.db:
-                    self.db.session.close()
-    
-    def update_invoice_status(self):
-        """Update overdue invoices - runs daily at midnight"""
-        with self.app_context():
-            now = datetime.now().date()
-            try:
+                now = datetime.now().date()
                 overdue_invoices = Invoice.query.filter(
                     Invoice.due_date < now,
                     Invoice.status == 'unpaid'
@@ -73,18 +74,18 @@ class SchedulerService:
                 
                 for invoice in overdue_invoices:
                     invoice.status = 'overdue'
-                    self.app.logger.info(f"Updated invoice {invoice.invoice_number} to overdue")
-                
-                self.db.session.commit()
+                    
+                db.session.commit()
+                app.logger.info(f"Updated {len(overdue_invoices)} overdue invoices")
             except Exception as e:
-                self.app.logger.error(f"Failed to update invoice status: {str(e)}")
-                raise
+                db.session.rollback()
+                app.logger.error(f"Error updating invoice status: {str(e)}")
     
-    def send_due_notifications(self):
-        """Send notifications for upcoming due invoices - runs daily at 9 AM"""
-        with self.app_context():
-            now = datetime.now().date()
+    def send_due_notifications():
+        """Send notifications for invoices due soon."""
+        with app.app_context():
             try:
+                now = datetime.now().date()
                 due_invoices = Invoice.query.filter(
                     Invoice.due_date >= now,
                     Invoice.due_date <= now + timedelta(days=3),
@@ -92,85 +93,48 @@ class SchedulerService:
                 ).all()
                 
                 for invoice in due_invoices:
-                    self.send_invoice_email(invoice)
-                    self.app.logger.info(f"Sent reminder for invoice {invoice.invoice_number}")
+                    message = Message(
+                        subject="Invoice Due Reminder",
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[invoice.user.email]
+                    )
+                    message.body = f"""
+                    Dear {invoice.user.name},
+                    
+                    This is a reminder that your invoice {invoice.invoice_number} 
+                    is due on {invoice.due_date}.
+                    
+                    Amount Due: ${invoice.amount:,.2f}
+                    
+                    Please ensure timely payment to avoid late fees.
+                    
+                    Best regards,
+                    Your Business Name
+                    """
+                    mail.send(message)
+                    app.logger.info(f"Sent reminder for invoice {invoice.invoice_number}")
             except Exception as e:
-                self.app.logger.error(f"Failed to send notifications: {str(e)}")
-                raise
+                app.logger.error(f"Error sending notifications: {str(e)}")
     
-    def send_invoice_email(self, invoice):
-        """Helper method to send individual invoice emails"""
-        try:
-            message = Message(
-                subject="Invoice Due Reminder",
-                sender=self.app.config['MAIL_USERNAME'],
-                recipients=[invoice.user.email]
-            )
-            message.body = f"""
-            Dear {invoice.user.name},
-            
-            This is a reminder that your invoice {invoice.invoice_number} is due on {invoice.due_date}.
-            
-            Amount Due: ${invoice.amount:,.2f}
-            
-            Please ensure timely payment to avoid late fees.
-            
-            Best regards,
-            Your Business Name
-            """
-            self.mail.send(message)
-        except Exception as e:
-            self.app.logger.error(f"Failed to send email for invoice {invoice.invoice_number}: {str(e)}")
-            raise
+    # Register scheduled jobs
+    scheduler.add_job(
+        id='update_overdue_invoices',
+        func=update_invoice_status,
+        trigger=CronTrigger(hour=0, minute=0),
+        replace_existing=True
+    )
     
-    def register_jobs(self):
-        """Register all scheduled jobs"""
-        # Update overdue invoices at midnight
-        self.scheduler.add_job(
-            id='update_overdue_invoices',
-            func=self.update_invoice_status,
-            trigger=CronTrigger(hour=19, minute=10),
-            replace_existing=True
-        )
-        
-        # Send notifications at 9 AM
-        self.scheduler.add_job(
-            id='send_due_invoice_notifications',
-            func=self.send_due_notifications,
-            trigger=CronTrigger(hour=19, minute=10),
-            replace_existing=True
-        )
-
-def create_app(config_name=None):
-    app = Flask(__name__)
+    scheduler.add_job(
+        id='send_due_invoice_notifications',
+        func=send_due_notifications,
+        trigger=CronTrigger(hour=19, minute=30),
+        replace_existing=True
+    )
     
-    #configuration
-    if config_name is None:
-        config_name = os.getenv('FLASK_CONFIG', 'default')
-    app.config.from_object(Config)
+    # Start the scheduler
+    scheduler.start()
     
-    #extensions
-    db.init_app(app)
-    mail.init_app(app)
-    migrate.init_app(app, db)
-    admin.init_app(app)
-    
-    # Initialize scheduler
-    scheduler_service = SchedulerService(app, db, mail)
-    
-    #blueprints
-    app.register_blueprint(authentication, url_prefix="")
-    app.register_blueprint(invoices, url_prefix="/invoices")
-    app.register_blueprint(customers, url_prefix="/customers")
-    app.register_blueprint(payments, url_prefix="/payments")
-    
-    #admin views 
-    admin.add_view(UserAdmin(User, db.session))
-    admin.add_view(ModelView(Customer, db.session))
-    admin.add_view(InvoiceAdmin(Invoice, db.session))
-    admin.add_view(ModelView(Payment, db.session))
-    
-    #routes
+    # Routes
     @app.route("/")
     def index():
         return render_template("index.html")
@@ -186,9 +150,8 @@ def create_app(config_name=None):
             return redirect('/login') 
             
         user_invoices = Invoice.query.filter_by(user_id=user.id).all()
-        
         outstanding_invoices = Invoice.query.filter(
-            Invoice.user_id == user.id,
+            Invoice.user_id == user.id, 
             Invoice.status != 'paid'
         ).count()
         
@@ -210,12 +173,16 @@ def create_app(config_name=None):
     
     @app.errorhandler(404)
     def not_found_error(error):
-        return render_template('404.html'), 404
+        return render_template('error.html', 
+                             error_code=404, 
+                             error_message="Page not found"), 404
 
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
-        return render_template('500.html'), 500
+        return render_template('error.html', 
+                             error_code=500, 
+                             error_message="Internal server error"), 500
     
     return app
 
