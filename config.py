@@ -18,7 +18,8 @@ class Config:
     MAIL_USE_SSL = True
     SCHEDULER_API_ENABLED = True
     SCHEDULER_TIMEZONE = "GMT+3"
-
+    SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URI')
+    
     
 
 @staticmethod
