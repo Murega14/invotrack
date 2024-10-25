@@ -33,7 +33,7 @@ def create_app():
     
     # Configuration
     app.config.update(
-        SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL'),
+        SQLALCHEMY_DATABASE_URI=os.getenv('DEV_DATABASE_URI'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SECRET_KEY=os.getenv('SECRET_KEY'),
         MAIL_SERVER=os.getenv('MAIL_SERVER', 'smtp.gmail.com'),
