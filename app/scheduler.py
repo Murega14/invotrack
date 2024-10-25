@@ -73,7 +73,7 @@ def init_scheduler(app):
             func=send_due_notifications,
             trigger='cron',
             hour=20,
-            minute=0,
+            minute=30,
             replace_existing=True
         )
         
