@@ -85,22 +85,6 @@ def callback():
         db.session.add(user)
         db.session.commit()
         
-    oauth_session = OAuthSession.query.filter_by(user_id=user.id).first()
-    if oauth_session:
-        oauth_session.access_token = credentials.token
-        oauth_session.refresh_token = credentials.refresh_token
-        oauth_session.token_expiry = credentials.expiry
-        oauth_session.updated_at = datetime.now()
-    else:
-        oauth_session = OAuthSession(
-            user_id=user.id,
-            access_token=credentials.token,
-            refresh_token=credentials.refresh_token,
-            token_expiry=credentials.expiry
-        )
-        db.session.add(oauth_session)
-        
-    db.session.commit()
     
     return redirect("/dashboard")
 

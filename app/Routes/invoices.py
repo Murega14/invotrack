@@ -16,8 +16,8 @@ def generate_random_invoices(user_id, num_invoices=10):
         invoice_number = f"INV-{random.randint(1000, 9999)}"
         amount = round(random.uniform(100, 1000), 0)
         date_issued = datetime.today() - timedelta(days=random.randint(0, 30))
-        due_date = date_issued + timedelta(days=random.randint(15, 45))
-        status = random.choice(['unpaid', 'paid', 'overdue'])
+        due_date = date_issued + timedelta(days=random.randint(2, 5))
+        status = random.choice(['unpaid', 'paid'])
 
         new_invoice = Invoice(
             user_id=user_id,
