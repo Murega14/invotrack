@@ -73,26 +73,21 @@ def view_invoice(invoice_id):
     if not user:
         return jsonify({"error": "user not found"}), 404
     
-    data = request.get_json()
-    invoice_id = data.get('invoice_id')
+    invoice = Invoice.query.filter_by(id=invoice_id, user_id=user.id).first()
     
-    invoices = Invoice.query.filter_by(id=invoice_id, user_id=user.id).first()
-    
-    if not invoices:
+    if not invoice:
         return jsonify({"error": "invoice not found"}), 404
     
-    
     invoice_data = [{
-            "invoice_number": invoice.invoice_number,
-            "customer_name": invoice.user.name,
-            "customer_email": invoice.user.email,
-            "amount": float(invoice.amount),
-            "status": invoice.status,
-            "due_date": invoice.due_date
-        } for invoice in invoices]
+        "invoice_number": invoice.invoice_number,
+        "customer_name": invoice.user.name,
+        "customer_email": invoice.user.email,
+        "amount": float(invoice.amount),
+        "status": invoice.status,
+        "due_date": invoice.due_date
+    }]
     
     return render_template('single_invoice.html', invoice_data=invoice_data)
-    
 
 @invoices.route('/add_invoice', methods=['POST'])
 @login_is_required
