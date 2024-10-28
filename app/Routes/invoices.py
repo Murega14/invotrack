@@ -87,7 +87,7 @@ def view_invoice(invoice_id):
         "due_date": invoice.due_date
     }]
     
-    return render_template('single_invoice.html', invoice_data=invoice_data)
+    return render_template('single_invoice.html', invoice_data=invoice_data, invoice_id=invoice.id)
 
 @invoices.route('/add_invoice', methods=['POST'])
 @login_is_required
