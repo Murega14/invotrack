@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, session, request, render_template
+from flask import Blueprint, jsonify, session, request, render_template, redirect, url_for
 from app.models import Invoice, User, Customer, db
 from .authentication import login_is_required
 from datetime import datetime
@@ -29,7 +29,6 @@ def generate_random_invoices(user_id, num_invoices=10):
         )
         db.session.add(new_invoice)
     
-    # Commit the invoices to the database
     db.session.commit()
 
 
@@ -48,7 +47,6 @@ def user_invoices():
     
     if len(userInvoices) == 0:
         generate_random_invoices(user_id=user.id)
-        # Fetch the invoices again after generating
         userInvoices = Invoice.query.filter_by(user_id=user.id).all()
     
     invoices_data = [{
@@ -88,6 +86,25 @@ def view_invoice(invoice_id):
     }]
     
     return render_template('single_invoice.html', invoice_data=invoice_data, invoice_id=invoice.id)
+
+@invoices.route('/invoice/<int:invoice_id>/mark-paid', methods=['POST'])
+@login_is_required
+def mark_as_paid(invoice_id):
+    google_id = session.get('google_id')
+    user = User.query.filter_by(google_id=google_id).first()
+    
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+    
+    invoice = Invoice.query.filter_by(id=invoice_id, user_id=user.id).first()
+    
+    if not invoice:
+        return jsonify({"error": "invoice not found"}), 404
+        
+    invoice.status = 'paid'
+    db.session.commit()
+    
+    return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
 
 @invoices.route('/add_invoice', methods=['POST'])
 @login_is_required
