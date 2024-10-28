@@ -64,6 +64,36 @@ def user_invoices():
     
     return render_template('invoice.html', invoices_data=invoices_data)
 
+@invoices.route('/invoice/<int:invoice_id>', methods=['GET'])
+@login_is_required
+def view_invoice(invoice_id):
+    google_id = session.get('google_id')
+    user = User.query.filter_by(google_id=google_id).first()
+    
+    if not user:
+        return jsonify({"error": "user not found"}), 404
+    
+    data = request.get_json()
+    invoice_id = data.get('invoice_id')
+    
+    invoices = Invoice.query.filter_by(id=invoice_id, user_id=user.id).first()
+    
+    if not invoices:
+        return jsonify({"error": "invoice not found"}), 404
+    
+    
+    invoice_data = [{
+            "invoice_number": invoice.invoice_number,
+            "customer_name": invoice.user.name,
+            "customer_email": invoice.user.email,
+            "amount": float(invoice.amount),
+            "status": invoice.status,
+            "due_date": invoice.due_date
+        } for invoice in invoices]
+    
+    return render_template('single_invoice.html', invoice_data=invoice_data)
+    
+
 @invoices.route('/add_invoice', methods=['POST'])
 @login_is_required
 def create_invoice():
@@ -100,30 +130,5 @@ def create_invoice():
     
     return jsonify({"message": f"invoice {invoice_number} has been created"}), 201
 
-@invoices.route('/invoice/<int:invoice_id>', methods=['GET'])
-@login_is_required
-def view_invoice(invoice_id):
-    google_id = session.get('google_id')
-    user = User.query.filter_by(google_id=google_id).first()
-    
-    if not user:
-        return jsonify({"error": "user not found"}), 404
-    
-    invoice = Invoice.query.filter_by(id=invoice_id, user_id=user.id).first()
-    
-    if not invoice:
-        return jsonify({"error": "invoice not found"}), 404
-    
-    
-    invoice_data = {
-        "number": invoice.invoice_number,
-        "company_name": user.company_name or "Your Company Name",
-        "company_email": user.email,
-        "client_name": invoice.customer.name,
-        "total": float(invoice.amount),
-        "due_date": invoice.due_date.strftime("%Y-%m-%d"),
-        "payment_method": invoice.payment_method or "Bank Transfer"
-    }
-    
 
 
