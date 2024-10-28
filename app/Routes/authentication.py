@@ -47,7 +47,8 @@ def login_is_required(function):
         if "google_id" not in session:
             return abort(401)
         else:
-            return function()
+            return function(*args, **kwargs)
+    wrapper.__name__ = function.__name__
     return wrapper
 
 @authentication.route('/login')
