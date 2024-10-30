@@ -1,10 +1,13 @@
 import base64
-import json
 import requests
 from datetime import datetime
-from app.models import Payment
 from dotenv import load_dotenv
 import os
+from flask import Blueprint, request, jsonify, session, redirect
+from .Routes.authentication import login_is_required
+from .models import User, Payment, Invoice
+
+mpesa = Blueprint('mpesa', __name__)
 
 load_dotenv()
 
@@ -24,8 +27,12 @@ def generate_access_token():
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     return response.text   
 
-
+@mpesa.route('/make_payment')
+@login_is_required
 def lipanampesa():
+    google_id = session.get('google_id')
+    user = User.query.filter_by(google_id=google_id).first()
+    
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     shortCode = "9276285"
@@ -37,86 +44,55 @@ def lipanampesa():
         'Authorization': 'Bearer' + token,
         'Content-Type': 'application/json'
         }
+    
     requestBody = {
         "BusinessShortCode": shortCode,
         "Password": stk_password,
         "Timestamp": timestamp,
         "TransactionType": "CustomerBuyGoodsOnline",
         "Amount": 1,
-        "PartyA": 254741644151,
+        "PartyA": user.Customer.phone_number,
         "PartyB": shortCode,
-        "PhoneNumber": 254741644151,
-        "CallbackURL": '',
+        "PhoneNumber": user.Customer.phone_number,
+        "CallbackURL": 'https://invotack-2.onrender.com/mpesa/mpesa_callback',
         "Transactiondesc": 'Test'
         }
     
-    try:
-        response = requests.post(url, json=requestBody, headers=headers)
-        print(response.json())
-        return response.json()
+    return redirect('mpesa_callback')
     
-    except Exception as e:
-        print(f'Error: {str(e)}')
-
-def lipanafamilybank():
-    token = generate_access_token()
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    shortCode = '222111'
-    passkey = os.getenv('PASSKEY')
-    url = ''
-    stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
-
-    headers = {
-        'Authorization': 'Bearer' + token,
-        'Content-Type': 'application/json'
+@mpesa.route('mpesa_callback', methods=['POST'])
+def callback():
+    callback_data = request.json()
+    
+    #check the result code
+    result_code = callback_data['Body']['StkCallback']['ResultCode']
+    
+    if result_code != 0:
+        error_message = callback_data['Body']['stkCallback']['ResultDesc']
+        response_data = {
+            'ResultCode': result_code,
+            'ResultDesc': error_message
         }
+        return jsonify(response_data)
     
-    requestBody = {
-        "BusinessShortCode": shortCode,
-        "BillRefNumber": '752292',
-        "Password": stk_password,
-        "TransactionType": "CustomerPaybillonline",
-        "Amount": 1,
-        "PartyA": 254741644151,
-        "PartyB": shortCode,
-        "CallbackURL": '',
-        "Transactiondesc": 'Test'
-        }
+    callback_metadata = callback_data['Body']['stkCallback']['CallbackMetadata']
+    amount = None
+    transaction_code = None
     
-    try:
-        response = requests.post(url, json=requestBody, headers=headers)
-        print(response.json())
-        return response.json()
-    except Exception as e:
-        print(f'Error: {str(e)}')
-
-def lipanacoop():
-    token = generate_access_token()
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    shortCode = '400200'
-    passkey = os.getenv('PASSKEY')
-    url = ''
-    stk_password = base64.b64encode((shortCode + passkey +timestamp).encode('utf-8')).decode('utf-8')
-
-    headers = {
-        'Authorization': 'Bearer' + token,
-        'Content-Type': 'application/json'
-        }
+    for item in callback_metadata['item']:
+        if item['Name'] == 'Amount':
+            amount = item['Value']
+        elif item['Name'] == 'MpesaReceiptNumber':
+            transaction_code = item['Value']
+            
+    # save the variables in the database
+    #TODO
     
-    requestBody = {
-        "BusinessShortCode": shortCode,
-        "BillRefNumber": '37681',
-        "Passwword": stk_password,
-        "TransactionType": "CustomerPaybillOnline",
-        "Amount": 1,
-        "PartyA": 254741644151,
-        "PartyB": shortCode,
-        "CallbackURL": '',
-        "Transactiondesc": "Test"
-        }
+    #return a sucess response to the server
+    response_data = {
+        'ResultCode': result_code,
+        'ResultDesc': 'Success'
+    }
     
-    try:
-        response = requests.post(url, json=requestBody, headers=headers)
-        return response.json()
-    except Exception as e:
-        print(f'Error: {str(e)}')
+    return jsonify(response_data)
+    

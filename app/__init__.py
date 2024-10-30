@@ -50,11 +50,13 @@ def create_app():
         from .Routes.invoices import invoices
         from .Routes.customers import customers
         from .Routes.payments import payments
+        from .mpesa import mpesa
         
         app.register_blueprint(authentication)
         app.register_blueprint(invoices, url_prefix="/invoices")
         app.register_blueprint(customers, url_prefix="/customers")
         app.register_blueprint(payments, url_prefix="/payments")
+        app.register_blueprint(mpesa, url_prefix='/mpesa')
         
         from .scheduler import init_scheduler
         init_scheduler(app)

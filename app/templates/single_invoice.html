@@ -69,10 +69,10 @@
             <!-- Actions -->
             {% if invoice_data[0].status != 'paid' %}
             <div class="mt-6 border-t pt-6">
-                <form action="{{ url_for('invoices.mark_as_paid', invoice_id=invoice_id) }}" method="POST" class="inline">
+                <form action="{{ url_for('mpesa.lipanampesa', invoice_id=invoice_id) }}" method="POST" class="inline">
                     <button type="submit" 
                             class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
-                        Mark as Paid
+                        Make Payment
                     </button>
                 </form>
                 
