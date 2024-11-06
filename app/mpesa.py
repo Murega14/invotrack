@@ -61,7 +61,7 @@ def lipanampesa(invoice_id):
         "PartyA": 254741644151,
         "PartyB": shortCode,
         "PhoneNumber": 254741644151,
-        "CallbackURL": f'https://invotack-2.onrender.com/mpesa/mpesa_callback/{invoice_id}',
+        "CallbackURL": f'https://invotack-2.onrender.com/mpesa/mpesa_callback/',
         "Transactiondesc": 'Test'
         }
     
@@ -72,12 +72,12 @@ def lipanampesa(invoice_id):
     else:
         return jsonify({'error': 'Failed to initiate STK push', 'status_code': response.status_code, 'details': response.text}), 400
     
-@mpesa.route('/mpesa_callback/<int:invoice_id>', methods=['POST'])
-def callback(invoice_id):
+@mpesa.route('/mpesa_callback', methods=['POST'])
+def callback():
     callback_data = request.json()
     google_id = session.get('google_id')
     user = User.query.filter_by(google_id=google_id).first()
-    invoice = Invoice.query.filter_by(id=invoice_id).first()
+    #invoice = Invoice.query.filter_by(id=invoice_id).first()
     
     #check the result code
     result_code = callback_data['Body']['StkCallback']['ResultCode']
@@ -101,14 +101,14 @@ def callback(invoice_id):
             transaction_code = item['Value']
             
     # save the variables in the database
-    new_payment = Payment(user_id=user.id,
-                          invoice_number=invoice.invoice_number,
-                          amount=amount,
-                          transaction_code=transaction_code,
-                          payment_method="Mpesa",
-                          payment_date=datetime.now().strftime('%Y%m%d%H%M%S'))
-    db.session.add(new_payment)
-    db.session.commit()
+    #new_payment = Payment(user_id=user.id,
+     #                     invoice_number=invoice.invoice_number,
+      #                    amount=amount,
+       #                   transaction_code=transaction_code,
+        #                  payment_method="Mpesa",
+         #                 payment_date=datetime.now().strftime('%Y%m%d%H%M%S'))
+    #db.session.add(new_payment)
+    #db.session.commit()
     
     #return a sucess response to the server
     response_data = {
