@@ -17,12 +17,12 @@ def generate_access_token():
 
     
     encoded_credentials = base64.b64decode(f'{consumer_key}:{consumer_secret}'.encode())
-    
+    encoded_credentials_2 = os.getenv('ENCODED_CREDENTIALS')
     url = "https://sandbox.safaricom.co.ke/oauth/v1/generate"
     querystring = {"grant_type":"client_credentials"}
     payload = ""
     headers = {
-            "Authorization": f"Basic {encoded_credentials}"
+            "Authorization": f"Basic {encoded_credentials_2}"
         }
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     return response.text   
