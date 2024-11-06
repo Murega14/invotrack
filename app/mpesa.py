@@ -16,7 +16,10 @@ def generate_access_token():
     consumer_secret = os.getenv('CONSUMER_SECRET')
 
     
-    encoded_credentials = base64.encode(f'{consumer_key}:{consumer_secret}')
+    credentials = f'{consumer_key}:{consumer_secret}'
+    
+    # Encode the credentials in base64
+    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
     encoded_credentials_2 = os.getenv('ENCODED_CREDENTIALS')
     url = "https://sandbox.safaricom.co.ke/oauth/v1/generate"
     querystring = {"grant_type":"client_credentials"}
