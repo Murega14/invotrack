@@ -3,6 +3,7 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import json
 from flask import Blueprint, request, jsonify, session, redirect
 from .Routes.authentication import login_is_required
 from .models import User, Payment, db, Invoice
@@ -37,7 +38,9 @@ def lipanampesa(invoice_id):
     user = User.query.filter_by(google_id=google_id).first()
     
     response = generate_access_token()
-    token = response.get('access_token')
+    response_dict = json.loads(response)
+    token = response_dict.get('access_token')
+    
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     shortCode = "174379"
     passkey = os.getenv('PASSKEY')
