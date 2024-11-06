@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 from flask import Blueprint, request, jsonify, session, redirect
 from .Routes.authentication import login_is_required
-from .models import User, Payment, Invoice
+from .models import User, Payment, db
 
 mpesa = Blueprint('mpesa', __name__)
 
@@ -27,9 +27,9 @@ def generate_access_token():
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     return response.text   
 
-@mpesa.route('/make_payment')
+@mpesa.route('/<int:invoice_number>/make_payment', methods='POST')
 @login_is_required
-def lipanampesa():
+def lipanampesa(invoice_number):
     google_id = session.get('google_id')
     user = User.query.filter_by(google_id=google_id).first()
     
@@ -54,15 +54,22 @@ def lipanampesa():
         "PartyA": user.Customer.phone_number,
         "PartyB": shortCode,
         "PhoneNumber": user.Customer.phone_number,
-        "CallbackURL": 'https://invotack-2.onrender.com/mpesa/mpesa_callback',
+        "CallbackURL": f'https://invotack-2.onrender.com/mpesa/mpesa_callback/{invoice_number}',
         "Transactiondesc": 'Test'
         }
     
-    return redirect('mpesa_callback')
+    response = requests.post(url, headers=headers, json=requestBody)
+    if response.status_code == 200:
+        response_data = response.get_json()
+        return redirect(f'/mpesa_callback/{invoice_number}')
+    else:
+        return jsonify({'error': 'Failed to initiate STK push', 'status_code': response.status_code, 'details': response.text}), 400
     
-@mpesa.route('mpesa_callback', methods=['POST'])
-def callback():
+@mpesa.route('/mpesa_callback/<int:invoice_number>', methods='POST')
+def callback(invoice_number):
     callback_data = request.json()
+    google_id = session.get('google_id')
+    user = User.query.filter_by(google_id=google_id).first()
     
     #check the result code
     result_code = callback_data['Body']['StkCallback']['ResultCode']
@@ -86,7 +93,14 @@ def callback():
             transaction_code = item['Value']
             
     # save the variables in the database
-    #TODO
+    new_payment = Payment(user_id=user.id,
+                          invoice_number=invoice_number,
+                          amount=amount,
+                          transaction_code=transaction_code,
+                          payment_method="Mpesa",
+                          payment_date=datetime.now().strftime('%Y%m%d%H%M%S'))
+    db.session.add(new_payment)
+    db.session.commit()
     
     #return a sucess response to the server
     response_data = {
@@ -94,5 +108,5 @@ def callback():
         'ResultDesc': 'Success'
     }
     
-    return jsonify(response_data)
+    return redirect('/')
     
