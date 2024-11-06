@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 from flask import Blueprint, request, jsonify, session, redirect
 from .Routes.authentication import login_is_required
-from .models import User, Payment, db
+from .models import User, Payment, db, Invoice
 
 mpesa = Blueprint('mpesa', __name__)
 
@@ -27,9 +27,9 @@ def generate_access_token():
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     return response.text   
 
-@mpesa.route('/<int:invoice_number>/make_payment', methods=['POST'])
+@mpesa.route('/<int:invoice_id>/make_payment', methods=['POST'])
 @login_is_required
-def lipanampesa(invoice_number):
+def lipanampesa(invoice_id):
     google_id = session.get('google_id')
     user = User.query.filter_by(google_id=google_id).first()
     
@@ -54,22 +54,23 @@ def lipanampesa(invoice_number):
         "PartyA": user.Customer.phone_number,
         "PartyB": shortCode,
         "PhoneNumber": user.Customer.phone_number,
-        "CallbackURL": f'https://invotack-2.onrender.com/mpesa/mpesa_callback/{invoice_number}',
+        "CallbackURL": f'https://invotack-2.onrender.com/mpesa/mpesa_callback/{invoice_id}',
         "Transactiondesc": 'Test'
         }
     
     response = requests.post(url, headers=headers, json=requestBody)
     if response.status_code == 200:
         response_data = response.get_json()
-        return redirect(f'/mpesa_callback/{invoice_number}')
+        return redirect(f'/mpesa_callback/{invoice_id}')
     else:
         return jsonify({'error': 'Failed to initiate STK push', 'status_code': response.status_code, 'details': response.text}), 400
     
-@mpesa.route('/mpesa_callback/<int:invoice_number>', methods=['POST'])
-def callback(invoice_number):
+@mpesa.route('/mpesa_callback/<int:invoice_id>', methods=['POST'])
+def callback(invoice_id):
     callback_data = request.json()
     google_id = session.get('google_id')
     user = User.query.filter_by(google_id=google_id).first()
+    invoice = Invoice.query.filter_by(id=invoice_id).first()
     
     #check the result code
     result_code = callback_data['Body']['StkCallback']['ResultCode']
@@ -94,7 +95,7 @@ def callback(invoice_number):
             
     # save the variables in the database
     new_payment = Payment(user_id=user.id,
-                          invoice_number=invoice_number,
+                          invoice_number=invoice.invoice_number,
                           amount=amount,
                           transaction_code=transaction_code,
                           payment_method="Mpesa",
