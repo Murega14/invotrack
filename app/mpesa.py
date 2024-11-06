@@ -35,13 +35,13 @@ def lipanampesa(invoice_id):
     
     token = generate_access_token()
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    shortCode = "9276285"
+    shortCode = "174379"
     passkey = os.getenv('PASSKEY')
     url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
     stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
 
     headers = {
-        'Authorization': 'Bearer' + token,
+        'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
         }
     
