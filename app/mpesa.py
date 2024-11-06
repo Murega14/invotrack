@@ -51,9 +51,9 @@ def lipanampesa(invoice_id):
         "Timestamp": timestamp,
         "TransactionType": "CustomerBuyGoodsOnline",
         "Amount": 1,
-        "PartyA": user.Customer.phone_number,
+        "PartyA": 254741644151,
         "PartyB": shortCode,
-        "PhoneNumber": user.Customer.phone_number,
+        "PhoneNumber": 254741644151,
         "CallbackURL": f'https://invotack-2.onrender.com/mpesa/mpesa_callback/{invoice_id}',
         "Transactiondesc": 'Test'
         }
