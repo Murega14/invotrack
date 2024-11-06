@@ -1,6 +1,6 @@
-# Eripay
+# Invotrack
 
-Eripay is a simple invoice management system built with Flask and SQLAlchemy. It allows users to manage customers, invoices, and payments.
+Invotrack is a simple invoice management system built with Flask and SQLAlchemy. It allows users to manage customers, invoices, and payments.
 
 ## Getting Started
 
