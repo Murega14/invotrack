@@ -48,7 +48,7 @@ def lipanampesa(invoice_id):
     stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
 
     headers = {
-        'Authorization': 'Bearer' + token,
+        'Authorization':f'Bearer {token}',
         'Content-Type': 'application/json'
         }
     
