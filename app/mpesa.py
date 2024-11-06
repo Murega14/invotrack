@@ -27,7 +27,7 @@ def generate_access_token():
     response = requests.request("GET", url, data=payload, headers=headers, params=querystring)
     return response.text   
 
-@mpesa.route('/<int:invoice_number>/make_payment', methods='POST')
+@mpesa.route('/<int:invoice_number>/make_payment', methods=['POST'])
 @login_is_required
 def lipanampesa(invoice_number):
     google_id = session.get('google_id')
@@ -65,7 +65,7 @@ def lipanampesa(invoice_number):
     else:
         return jsonify({'error': 'Failed to initiate STK push', 'status_code': response.status_code, 'details': response.text}), 400
     
-@mpesa.route('/mpesa_callback/<int:invoice_number>', methods='POST')
+@mpesa.route('/mpesa_callback/<int:invoice_number>', methods=['POST'])
 def callback(invoice_number):
     callback_data = request.json()
     google_id = session.get('google_id')
