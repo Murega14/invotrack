@@ -72,7 +72,7 @@ def lipanampesa(invoice_id):
     else:
         return jsonify({'error': 'Failed to initiate STK push', 'status_code': response.status_code, 'details': response.text}), 400
     
-@mpesa.route('/mpesa_callback', methods=['POST'])
+@mpesa.route('/mpesa_callback', methods=['POST', 'GET'])
 def callback():
     callback_data = request.json()
     google_id = session.get('google_id')
