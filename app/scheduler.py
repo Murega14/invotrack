@@ -35,26 +35,27 @@ def init_scheduler(app):
             ).all()
             
             for invoice in due_invoices:
-                message = Message(
-                    subject="Invoice Due Reminder",
-                    sender=app.config['MAIL_USERNAME'],
-                    recipients=[invoice.user.email]
-                )
-                message.body = f"""
-                Dear {invoice.user.name},
-                
-                This is a reminder that your invoice {invoice.invoice_number} 
-                is due on {invoice.due_date}.
-                
-                Amount Due: ${invoice.amount:,.2f}
-                
-                Please ensure timely payment to avoid late fees.
-                
-                Best regards,
-                Your Business Name
-                """
-                mail.send(message)
-                app.logger.info(f"Sent reminder for invoice {invoice.invoice_number}")
+                with app.app_context():
+                    message = Message(
+                        subject="Invoice Due Reminder",
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[invoice.user.email]
+                    )
+                    message.body = f"""
+                    Dear {invoice.user.name},
+                    
+                    This is a reminder that your invoice {invoice.invoice_number} 
+                    is due on {invoice.due_date}.
+                    
+                    Amount Due: ${invoice.amount:,.2f}
+                    
+                    Please ensure timely payment to avoid late fees.
+                    
+                    Best regards,
+                    Your Business Name
+                    """
+                    mail.send(message)
+                    app.logger.info(f"Sent reminder for invoice {invoice.invoice_number}")
         except Exception as e:
             app.logger.error(f"Error sending notifications: {str(e)}")
 

@@ -36,7 +36,8 @@ def lipanampesa(invoice_id):
     google_id = session.get('google_id')
     user = User.query.filter_by(google_id=google_id).first()
     
-    token = generate_access_token()
+    response = generate_access_token()
+    token = response.get('access_token')
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     shortCode = "174379"
     passkey = os.getenv('PASSKEY')
