@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from flask import Blueprint, session, abort, redirect, request, flash, url_for, render_template
+from flask import Blueprint, session, abort, redirect, request, flash, url_for, render_template, jsonify
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
@@ -11,11 +11,18 @@ from app.models import Customer, db, User, OAuthSession
 from datetime import datetime
 from functools import wraps
 import tempfile
+import logging
 
 load_dotenv()
 
 authentication = Blueprint("authentication", __name__)
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 client_secrets_data = os.getenv("CLIENT_SECRETS")
@@ -54,79 +61,117 @@ def login_is_required(function):
 @authentication.route('/login')
 @authentication.route('/signup')
 def login():
-    authorization_url, state = flow.authorization_url(prompt="consent")
-    session["state"] = state
-    return redirect(authorization_url)
+    """
+    login and signup endpoints using google oauth
+
+    Returns:
+        redirects to the callback endpoint
+    """
+    try:
+        authorization_url, state = flow.authorization_url(prompt="consent")
+        session["state"] = state
+        return redirect(authorization_url)
+    
+    except Exception as e:
+        logger.error(f"failed to login or signup: {str(e)}")
 
 @authentication.route('/callback')
 def callback():
-    flow.fetch_token(authorization_response=request.url)
-    
-    if not session["state"] == request.args["state"]:
-        return abort(500)
-    
-    credentials = flow.credentials
-    request_session = requests.sessions.Session()
-    cached_session = cachecontrol.CacheControl(request_session)
-    token_request = google.auth.transport.requests.Request(session=cached_session)
-    
-    id_info = id_token.verify_oauth2_token(id_token=credentials._id_token,
-                                           request=token_request,
-                                           audience=GOOGLE_CLIENT_ID)
-    
-    session["google_id"] = id_info.get("sub")
-    session["name"] = id_info.get("name")
-    
-    user = User.query.filter_by(email=id_info.get("email")).first()
-    if not user:
-        user = User(name=id_info.get("name"),
-                    email=id_info.get("email"),
-                    google_id=id_info.get("sub")
-                    )
-        db.session.add(user)
-        db.session.commit()
+    """
+    callback method for google oauth authorization
+
+    Returns:
+        creates a new user in the db if they don't exist
+        redirects user to dashboard
+    """
+    try:
+        flow.fetch_token(authorization_response=request.url)
         
+        if not session["state"] == request.args["state"]:
+            logger.error("session does not exist")
+            return abort(500)
+        
+        credentials = flow.credentials
+        request_session = requests.sessions.Session()
+        cached_session = cachecontrol.CacheControl(request_session)
+        token_request = google.auth.transport.requests.Request(session=cached_session)
+        
+        id_info = id_token.verify_oauth2_token(
+            id_token=credentials._id_token,
+            audience=GOOGLE_CLIENT_ID
+        )
+        google_id = id_info.get("sub")
+        name = id_info.get("name")
+        email = id_info.get("email")
+        
+        user = User.query.get(email).first()
+        if not user:
+            try:
+                new_user = User(name=name, email=email, google_id=google_id)
+                db.session.add(new_user)
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"failed to create user: {str(e)}")
+                db.session.rollback()
+                return jsonify({"error": "Internal server error"}), 500
+            
+            logger.info("user has been created successfully")
+            return redirect("/register")
+        
+        return redirect("/dashboard")
     
-    return redirect("/dashboard")
+    except Exception as e:
+        logger.error(f"error: {str(e)}")
+        return jsonify({"error": "internal server error"}), 500
+                
 
 @authentication.route("/logout")
 @login_is_required
 def logout():
-    session.clear()
-    return redirect("/login")
+    """
+    logs out the user
+
+    Returns:
+        deletes the session state
+    """
+    try:
+        session.clear()
+        return redirect('/')
+    except Exception as e:
+        logger.error(f"Failed to logout: {str(e)}")
+        return jsonify({"error": "internal server error"}), 500
 
 
 @authentication.route('/user_profile', methods=['GET', 'POST'])
 @login_is_required
 def user_profile():
-    google_id = session.get('google_id')
-    user = User.query.filter_by(google_id=google_id).first()
-    
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('authentication.login'))
-    
-    customer = Customer.query.filter_by(email=user.email).first()
-    
-    if request.method == 'POST':
-        phone_number = request.form.get('phone_number')
+    """
+    shows the customer's details
+    """
+    try:
+        google_id = session.get("google_id")
+        user = User.query.get(google_id).first()
         
-        if not phone_number:
-            flash('Phone number is required', 'error')
-        else:
-            if not customer:
-                customer = Customer(name=user.name, email=user.email, phone_number=phone_number)
-                db.session.add(customer)
-            else:
-                customer.phone_number = phone_number
-            
-            try:
-                db.session.commit()
-                flash('User details updated successfully', 'success')
-            except Exception as e:
-                db.session.rollback()
-                flash(f'An error occurred: {str(e)}', 'error')
+        if not user:
+            logger.error(f"user does not exist: {google_id}")
+            return redirect("/login")
         
-        return redirect(url_for('authentication.user_profile'))
+        email = user.email
+        customer = Customer.query.get(email).first()
+        
+        if not customer:
+            logger.error(f"No business registered for user: {user.id}, {email}")
+            return redirect('/register')
+        
+        user_details = {
+            "name": user.name,
+            "email": user.email,
+            "business_name": customer.name,
+            "phone_number": customer.phone_number
+        }
+        
+        return render_template('profile.html', user_details)
     
-    return render_template('profile.html', user=user, customer=customer)
+    except Exception as e:
+        logger.error(f"Failed to fetch user details: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
