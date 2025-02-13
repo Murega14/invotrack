@@ -57,8 +57,10 @@ class Customer(db.Model, SerializerMixin):
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False)
+    
+    invoices = db.relationship('Invoice', backref='customer',lazy=True)
 
-    serialize_rules = ('-user')
+    serialize_rules = ('-user', '-invoices')
 
     def __repr__(self):
         return f'<Customer {self.id}, {self.name}, {self.email}, {self.phone_number}>'
@@ -68,16 +70,16 @@ class Invoice(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     invoice_number = db.Column(db.String(20), nullable=False, unique=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     date_issued = db.Column(db.Date, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
     status = db.Column(db.Enum('unpaid', 'paid', 'overdue', 'partial payment', name='invoice_status'), default='unpaid')
-    payment_method = db.Column(db.String(50))
     
     payments = db.relationship('Payment', back_populates='invoice')
 
-    serialize_rules = ('-user', '-payments.invoice')
+    serialize_rules = ('-user', '-payments.invoice', '-customer')
 
     def __repr__(self):
         return f'<Invoice {self.id}, {self.invoice_number}, {self.amount}, {self.date_issued}, {self.due_date}, {self.status}>'

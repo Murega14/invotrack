@@ -16,7 +16,7 @@ Invotrack is a simple invoice management system built with Flask and SQLAlchemy.
 ## Tech Stack
 
 - **Backend:** Python/Flask
-- **Database:** SQLAlchemy/SQLite 
+- **Database:** SQLAlchemy/SQLite
 - **Authentication:** Google OAuth
 - **Frontend:** HTML/Tailwind CSS
 - **Payments:** M-Pesa API Integration

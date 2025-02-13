@@ -9,6 +9,16 @@ payments = Blueprint('payments', __name__)
 
 
 def generate_payments(user_id):
+    """
+    Generate payments for the given user.
+
+    :type user_id: int
+    If a payment already exists for an invoice, it is skipped.
+
+    :param user_id: The ID of the user for whom to generate payments
+    :type user_id: int
+    :return: None
+    """
     user = User.query.filter_by(id=user_id).first()
     
     paid_invoices = Invoice.query.filter_by(user_id=user.id, status='paid').all()
@@ -38,6 +48,14 @@ def generate_payments(user_id):
 @payments.route('/view_payments', methods=['GET'])
 @login_is_required
 def view_payments():
+    """
+    View the payments for the logged-in user.
+
+    Retrieves the payments associated with the logged-in user and renders the payment.html template.
+
+    :return: Rendered HTML page with payment data
+    :rtype: str
+    """
     google_id = session.get('google_id')
     user = User.query.filter_by(google_id=google_id).first()
     

@@ -2,5 +2,7 @@
 env/
 .gitignore
 client_secret.json
-__pycache__
-*.pyc
+__pycache__/
+.pyc
+*/__pycache__/
+migrations/

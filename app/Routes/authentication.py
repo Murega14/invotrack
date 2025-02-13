@@ -104,7 +104,7 @@ def callback():
         name = id_info.get("name")
         email = id_info.get("email")
         
-        user = User.query.get(email).first()
+        user = User.query.filter_by(email=email).first()
         if not user:
             try:
                 new_user = User(name=name, email=email, google_id=google_id)
@@ -113,7 +113,7 @@ def callback():
             except Exception as e:
                 logger.error(f"failed to create user: {str(e)}")
                 db.session.rollback()
-                return jsonify({"error": "Internal server error"}), 500
+                return jsonify({"error": "failed to create user"}), 500
             
             logger.info("user has been created successfully")
             return redirect("/register")
@@ -150,14 +150,14 @@ def user_profile():
     """
     try:
         google_id = session.get("google_id")
-        user = User.query.get(google_id).first()
+        user = User.query.get(google_id)
         
         if not user:
             logger.error(f"user does not exist: {google_id}")
             return redirect("/login")
         
         email = user.email
-        customer = Customer.query.get(email).first()
+        customer = Customer.query.get(email)
         
         if not customer:
             logger.error(f"No business registered for user: {user.id}, {email}")
@@ -170,7 +170,7 @@ def user_profile():
             "phone_number": customer.phone_number
         }
         
-        return render_template('profile.html', user_details)
+        return render_template('profile.html', user_details=user_details)
     
     except Exception as e:
         logger.error(f"Failed to fetch user details: {str(e)}")
