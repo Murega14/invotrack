@@ -19,7 +19,7 @@ authentication = Blueprint("authentication", __name__)
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -77,53 +77,35 @@ def login():
 
 @authentication.route('/callback')
 def callback():
-    """
-    callback method for google oauth authorization
-
-    Returns:
-        creates a new user in the db if they don't exist
-        redirects user to dashboard
-    """
-    try:
-        flow.fetch_token(authorization_response=request.url)
-        
-        if not session["state"] == request.args["state"]:
-            logger.error("session does not exist")
-            return abort(500)
-        
-        credentials = flow.credentials
-        request_session = requests.sessions.Session()
-        cached_session = cachecontrol.CacheControl(request_session)
-        token_request = google.auth.transport.requests.Request(session=cached_session)
-        
-        id_info = id_token.verify_oauth2_token(
-            id_token=credentials._id_token,
-            audience=GOOGLE_CLIENT_ID
-        )
-        google_id = id_info.get("sub")
-        name = id_info.get("name")
-        email = id_info.get("email")
-        
-        user = User.query.filter_by(email=email).first()
-        if not user:
-            try:
-                new_user = User(name=name, email=email, google_id=google_id)
-                db.session.add(new_user)
-                db.session.commit()
-            except Exception as e:
-                logger.error(f"failed to create user: {str(e)}")
-                db.session.rollback()
-                return jsonify({"error": "failed to create user"}), 500
-            
-            logger.info("user has been created successfully")
-            return redirect("/register")
-        
-        return redirect("/dashboard")
+    flow.fetch_token(authorization_response=request.url)
     
-    except Exception as e:
-        logger.error(f"error: {str(e)}")
-        return jsonify({"error": "internal server error"}), 500
-                
+    if not session["state"] == request.args["state"]:
+        return abort(500)
+    
+    credentials = flow.credentials
+    request_session = requests.sessions.Session()
+    cached_session = cachecontrol.CacheControl(request_session)
+    token_request = google.auth.transport.requests.Request(session=cached_session)
+    
+    id_info = id_token.verify_oauth2_token(id_token=credentials._id_token,
+                                           request=token_request,
+                                           audience=GOOGLE_CLIENT_ID)
+    
+    session["google_id"] = id_info.get("sub")
+    session["name"] = id_info.get("name")
+    
+    user = User.query.filter_by(email=id_info.get("email")).first()
+    if not user:
+        user = User(name=id_info.get("name"),
+                    email=id_info.get("email"),
+                    google_id=id_info.get("sub")
+                    )
+        db.session.add(user)
+        db.session.commit()
+        
+    
+    return redirect("/dashboard")
+
 
 @authentication.route("/logout")
 @login_is_required

@@ -2,23 +2,109 @@
 {% block title %}Home{% endblock %}
 {% block content %}
 
-<div class="flex flex-col md:flex-row items-center justify-between p-8 bg-white h-screen">
-    <div class="md:w-1/2 mb-8 md:mb-0">
-        <h1 class="text-4xl font-bold mb-4">Welcome to Invotrack</h1>
-        <p class="text-lg mb-6">Manage your invoices and customers while giving your customers a chance to make payments on site</p>
-        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded flex items-center">
-            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            <a href="{{ url_for('authentication.login') }}">Login with Google</a>
-        </button>
-    </div>
-    <div class="md:w-1/2">
-        <img src="{{ url_for('static', filename='assets/web-bg.jpg') }}" alt="Photo by Tima Miroshnichenko" class="w-full h-auto">
+<!-- Hero Section -->
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 relative overflow-hidden">
+    <!-- Navigation -->
+    <nav class="absolute top-0 left-0 right-0 p-6">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Invotrack
+            </div>
+            <button class="bg-white hover:bg-gray-50 text-gray-900 px-6 py-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                Contact Us
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-16">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <!-- Left Column -->
+            <div class="space-y-8">
+                <h1 class="text-5xl md:text-6xl font-bold leading-tight">
+                    <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                        Streamline Your
+                    </span>
+                    <br />
+                    Invoice Management
+                </h1>
+                
+                <p class="text-gray-600 text-lg md:text-xl leading-relaxed">
+                    Transform your billing process with our powerful platform. Manage invoices, track payments, and give your customers a seamless payment experience.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <!-- Google Login Button -->
+                    <a href="{{ url_for('authentication.login') }}" 
+                       class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-white hover:bg-gray-50 text-gray-900 shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                        <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                        Login with Google
+                    </a>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-3 gap-6 pt-8">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-600">50</div>
+                        <div class="text-gray-600">Active Users</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-600">99%</div>
+                        <div class="text-gray-600">Satisfaction</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-600">24/7</div>
+                        <div class="text-gray-600">Support</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="relative">
+                <!-- Decorative Elements -->
+                <div class="absolute -top-4 -left-4 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+                <div class="absolute -bottom-8 -right-4 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+                
+                <!-- Main Image -->
+                <div class="relative">
+                    <div class="rounded-2xl overflow-hidden shadow-2xl transform hover:scale-105 transition duration-500">
+                        <img src="{{ url_for('static', filename='assets/web-bg.jpg') }}" 
+                             alt="Invoice Management Dashboard" 
+                             class="w-full h-auto rounded-2xl">
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Add these styles to your CSS -->
+<style>
+    @keyframes blob {
+        0% {
+            transform: translate(0px, 0px) scale(1);
+        }
+        33% {
+            transform: translate(30px, -50px) scale(1.1);
+        }
+        66% {
+            transform: translate(-20px, 20px) scale(0.9);
+        }
+        100% {
+            transform: translate(0px, 0px) scale(1);
+        }
+    }
+    .animate-blob {
+        animation: blob 7s infinite;
+    }
+    .animation-delay-2000 {
+        animation-delay: 2s;
+    }
+</style>
 
 {% endblock %}
