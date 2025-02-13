@@ -103,6 +103,8 @@ def callback():
         db.session.add(user)
         db.session.commit()
         
+        return redirect("/register")
+        
     
     return redirect("/dashboard")
 
