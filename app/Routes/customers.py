@@ -1,5 +1,5 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, session
-from app.models import db, Customer, User, Invoice
+from app.models import db, Customer, User
 from .authentication import login_is_required
 from ..templates import *
 import logging
@@ -35,7 +35,7 @@ def register_customer():
             if not all([name, email, phone_number]):
                 logger.error("not all fields have been submitted")
                 flash('All fields are required', 'error')
-                return jsonify({"error": "all fields are required"}), 403
+                return redirect(url_for('customers.register_customer'))
             
             new_customer = Customer(name=name, email=email, phone_number=phone_number)
             db.session.add(new_customer)
@@ -48,6 +48,6 @@ def register_customer():
         except Exception as e:
             logger.error(f"Failed to add business details: {str(e)}")
             db.session.rollback()
+            db.session.close()
             return jsonify({"error": "internal server error"}), 500
-    
-    return render_template('customer.html')
+    return render_template('customer.html', user=session.get("google_id"))

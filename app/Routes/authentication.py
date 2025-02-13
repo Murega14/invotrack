@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from flask import Blueprint, session, abort, redirect, request, flash, url_for, render_template, jsonify
+from flask import Blueprint, session, abort, redirect, request, flash, url_for, render_template, jsonify, current_app
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
@@ -134,18 +134,18 @@ def user_profile():
     """
     try:
         google_id = session.get("google_id")
-        user = User.query.get(google_id)
+        user = User.query.filter_by(google_id=google_id).first()
         
         if not user:
             logger.error(f"user does not exist: {google_id}")
             return redirect("/login")
         
         email = user.email
-        customer = Customer.query.get(email)
+        customer = Customer.query.filter_by(user_id=user.id).first()
         
         if not customer:
             logger.error(f"No business registered for user: {user.id}, {email}")
-            return redirect('/register')
+            return redirect('/customers/register')
         
         user_details = {
             "name": user.name,
@@ -154,6 +154,7 @@ def user_profile():
             "phone_number": customer.phone_number
         }
         
+        # Render the profile.html template with the user's details
         return render_template('profile.html', user_details=user_details)
     
     except Exception as e:
