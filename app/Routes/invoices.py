@@ -54,7 +54,7 @@ def user_invoices():
     """
     try:
         google_id = session.get('google_id')
-        user = User.query.get(google_id)
+        user = User.query.filter_by(google_id).first()
         
         if not user:
             logger.error(f"user not found: {google_id}")
@@ -97,7 +97,7 @@ def view_invoice(id: int):
     """
     try:
         google_id = session.get('google_id')
-        user = User.query.get(google_id)
+        user = User.query.filter_by(google_id).first()
         
         if not user:
             logger.error(f"user not found: {google_id}")
@@ -144,7 +144,7 @@ def mark_as_paid(id: int):
     """
     try:
         google_id = session.get('google_id')
-        user = User.query.get(google_id)
+        user = User.query.filter_by(google_id).first()
         
         if not user:
             logger.error(f"user not found: {google_id}")
@@ -175,7 +175,7 @@ def create_invoice():
     """
     try:
         google_id = session.get('google_id')
-        user = User.query.get(google_id)
+        user = User.query.filter_by(google_id).first()
         if not user:
             logger.error(f"user not found: {google_id}")
             return jsonify({"error": "user not found"}), 404

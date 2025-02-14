@@ -22,11 +22,16 @@ def register_customer():
     if request.method == 'POST':
         try:
             google_id = session.get("google_id")
-            user = User.query.get(google_id)
+            
+            if not google_id:
+                logger.error("google_id not found in session")
+                return jsonify({"error": "google_id not found in session"}), 400
+            
+            user = User.query.filter_by(google_id).first()
             
             if not user:
                 logger.error(f"user not found: {google_id}")
-                return jsonify({"error": "user not found"}),404
+                return jsonify({"error": "user not found"}), 404
             
             name = request.form.get("name")
             email = user.email

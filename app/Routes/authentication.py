@@ -102,7 +102,7 @@ def callback():
         session["name"] = id_info.get("name")
         
         email = id_info.get("email")
-        user = User.query.get(email)
+        user = User.query.filter_by(email=email).first()
         if not user:
             try:
                 user = User(name=session["name"],
@@ -116,7 +116,6 @@ def callback():
             except Exception as e:
                 logger.error(f"error adding new user to database: {str(e)}")
                 db.session.rollback()
-                db.session.close()
                 return jsonify({"error": "failed to create user"}), 500
         
         return redirect("/dashboard")
@@ -150,7 +149,7 @@ def user_profile():
     """
     try:
         google_id = session.get("google_id")
-        user = User.query.get(google_id)
+        user = User.query.filter_by(google_id).first()
         
         if not user:
             logger.error(f"user does not exist: {google_id}")
