@@ -77,37 +77,53 @@ def login():
 
 @authentication.route('/callback')
 def callback():
-    flow.fetch_token(authorization_response=request.url)
-    
-    if not session["state"] == request.args["state"]:
-        return abort(500)
-    
-    credentials = flow.credentials
-    request_session = requests.sessions.Session()
-    cached_session = cachecontrol.CacheControl(request_session)
-    token_request = google.auth.transport.requests.Request(session=cached_session)
-    
-    id_info = id_token.verify_oauth2_token(id_token=credentials._id_token,
-                                           request=token_request,
-                                           audience=GOOGLE_CLIENT_ID)
-    
-    session["google_id"] = id_info.get("sub")
-    session["name"] = id_info.get("name")
-    
-    user = User.query.filter_by(email=id_info.get("email")).first()
-    if not user:
-        user = User(name=id_info.get("name"),
-                    email=id_info.get("email"),
-                    google_id=id_info.get("sub")
-                    )
-        db.session.add(user)
-        db.session.commit()
-        
-        return redirect("/customers/register")
-        
-    
-    return redirect("/dashboard")
+    """
+    callback _summary_
 
+    _extended_summary_
+
+    :return: _description_
+    :rtype: _type_
+    """
+    try:
+        flow.fetch_token(authorization_response=request.url)
+        if not session["state"] == request.args["state"]:
+            return abort(500)
+        
+        credentials = flow.credentials
+        request_session = request.sessions.Session()
+        cached_session = cachecontrol.CacheControl(request_session)
+        token_request = google.auth.transport.requests.Request(session=cached_session)
+        
+        id_info = id_token.verify_oauth2_token(id_token=credentials._id_token,
+                                               request=token_request,
+                                               audience=GOOGLE_CLIENT_ID)
+        session["google_id"] = id_info.get("sub")
+        session["name"] = id_info.get("name")
+        
+        email = id_info.get("email")
+        user = User.query.get(email)
+        if not user:
+            try:
+                user = User(name=session["name"],
+                        email=email,
+                        google_id=session["google_id"])
+                db.session.add(user)
+                db.session.commit()
+            
+                return redirect("/customers/register")
+            
+            except Exception as e:
+                logger.error(f"error adding new user to database: {str(e)}")
+                db.session.rollback()
+                db.session.close()
+                return jsonify({"error": "failed to create user"}), 500
+        
+        return redirect("/dashboard")
+    
+    except Exception as e:
+        logger.error(f"callback error: {str(e)}")
+        return jsonify({"error": "internal server error"})
 
 @authentication.route("/logout")
 @login_is_required
@@ -134,11 +150,11 @@ def user_profile():
     """
     try:
         google_id = session.get("google_id")
-        user = User.query.filter_by(google_id=google_id).first()
+        user = User.query.get(google_id)
         
         if not user:
             logger.error(f"user does not exist: {google_id}")
-            return redirect("/login")
+            return jsonify({"error": "user not found"}), 404
         
         email = user.email
         customer = Customer.query.filter_by(user_id=user.id).first()
@@ -154,7 +170,6 @@ def user_profile():
             "phone_number": customer.phone_number
         }
         
-        # Render the profile.html template with the user's details
         return render_template('profile.html', user_details=user_details)
     
     except Exception as e:

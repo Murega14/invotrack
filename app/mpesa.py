@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-import json
+import logging
 from flask import Blueprint, request, jsonify, session, redirect
 from .Routes.authentication import login_is_required
 from .models import User, Payment, db, Invoice
@@ -12,7 +12,19 @@ mpesa = Blueprint('mpesa', __name__)
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 def generate_access_token():
+    """
+    generates an access token for api authentication
+
+    Returns:
+        _Response in a json format
+    """
     consumer_key = os.getenv('CONSUMER_KEY')
     consumer_secret = os.getenv('CONSUMER_SECRET')
     
@@ -30,51 +42,61 @@ def generate_access_token():
 
 @mpesa.route('/<int:invoice_id>/make_payment', methods=['POST'])
 @login_is_required
-def lipanampesa(invoice_id):
+def lipa_na_mpesa(id: int):
+    """
+    initializes an stk push for invoice payment
+
+    Args:
+        id (int): invoice identifier
+
+    Returns:
+        redirects to the callback url
+    """
     google_id = session.get('google_id')
-    user = User.query.filter_by(google_id=google_id).first()
-    invoice = Invoice.query.get_or_404(invoice_id)
+    user = User.query.get_or_404(google_id)
+    invoice = Invoice.query.get_or_404(id)
     
     response = generate_access_token()
     token = response.get('access_token')
-    
     if not token:
-        return jsonify({'error': 'Failed to get access token'}), 400
+        logger(f"access token not found: {response}")
+        return jsonify({"error": "no token for authorization"}), 403
     
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    shortCode = "174379"
+    timestamp = datetime.now().strftime('%H%M%S %Y%m%d')
+    short_code = "174379"
     passkey = os.getenv('PASSKEY')
     
     url = 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
-    stk_password = base64.b64encode((shortCode + passkey + timestamp).encode('utf-8')).decode('utf-8')
-
+    stk_password = base64.b64encode((short_code + passkey + timestamp).encode('utf-8')).decode('utf-8')
+    
     headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
     }
-    
-    requestBody = {
-        "BusinessShortCode": shortCode,
+    request_body = {
+        "BusinessShortCode": short_code,
         "Password": stk_password,
         "Timestamp": timestamp,
         "TransactionType": "CustomerBuyGoodsOnline",
         "Amount": int(invoice.amount),
-        "PartyA": 254741644151,
-        "PartyB": shortCode,
-        "PhoneNumber": 254741644151,
-        "CallbackURL": f"https://invotack-2.onrender.com/mpesa/mpesa_callback/{invoice_id}",
-        "TransactionDesc": f'Payment for Invoice #{invoice.invoice_number}'
+        "PartyA": 254741644151, #change to invoice.customer.phone_number
+        "PartyB": short_code,
+        "PhoneNumber": 254741644151, #change to invoice.customer.phone_number
+        "CallbackURL": f"https://invotack-2.onrender.com/mpesa/mpesa_callback/{id}",
+        "TransactionDesc": f'Payment for Invoice #{invoice.invoice_number}'        
     }
     
-    response = requests.post(url, headers=headers, json=requestBody)
+    response = requests.post(url, headers=headers, json=request_body)
     
     if response.status_code == 200:
-        return redirect(f'/mpesa_callback/{invoice_id}')
-    return jsonify({
-        'error': 'Failed to initiate STK push',
-        'status_code': response.status_code,
-        'details': response.text
-    }), 400
+        return redirect('/mpesa_callback/<int:invoice_id>')
+    else:
+        return jsonify({
+            "error": "failed to initialize stk push",
+            "status_code": response.status_code,
+            "details": response.text
+        }), 400
+        
 
 @mpesa.route('/mpesa_callback/<int:invoice_id>', methods=['POST'])
 def callback(invoice_id):

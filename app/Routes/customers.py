@@ -26,7 +26,7 @@ def register_customer():
             
             if not user:
                 logger.error(f"user not found: {google_id}")
-                return redirect('/login')
+                return jsonify({"error": "user not found"}),404
             
             name = request.form.get("name")
             email = user.email
@@ -35,7 +35,7 @@ def register_customer():
             if not all([name, email, phone_number]):
                 logger.error("not all fields have been submitted")
                 flash('All fields are required', 'error')
-                return redirect(url_for('customers.register_customer'))
+                return jsonify({"error": "all fields are required"}), 403
             
             new_customer = Customer(name=name, email=email, phone_number=phone_number)
             db.session.add(new_customer)
@@ -50,4 +50,4 @@ def register_customer():
             db.session.rollback()
             db.session.close()
             return jsonify({"error": "internal server error"}), 500
-    return render_template('customer.html', user=session.get("google_id"))
+    return render_template('customer.html')
