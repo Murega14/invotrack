@@ -169,7 +169,7 @@ def user_profile():
             "phone_number": customer.phone_number
         }
         
-        return render_template('profile.html', user_details=user_details)
+        return render_template('profile.html', user_details=[user_details])
     
     except Exception as e:
         logger.error(f"Failed to fetch user details: {str(e)}")

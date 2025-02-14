@@ -48,9 +48,6 @@ def generate_random_invoices(user_id: int, customer_id: int, num_invoices=10):
 def user_invoices():
     """
     returns a list of user invoices
-
-    Returns:
-        Response: JSON response containing the list of invoices or an error message
     """
     try:
         google_id = session.get('google_id')
@@ -60,14 +57,17 @@ def user_invoices():
             logger.error(f"user not found: {google_id}")
             return jsonify({"error": "user not found"}), 404
         
-        customer = Customer.query.get(user.id)
+        customer = Customer.query.filter_by(user_id=user.id).first()
+        if not customer:
+            logger.error(f"customer profile not found for user {user.id}")
+            return redirect("/customers/register")
         
         invoices = Invoice.query.filter_by(user_id=user.id).all()
         if len(invoices) == 0:
             generate_random_invoices(user_id=user.id, customer_id=customer.id)
-            invoices = Invoice.query.filter_by(user_id=user.id)
+            invoices = Invoice.query.filter_by(user_id=user.id).all()
         
-        invoices_data =[{
+        invoices_data = [{
             "id": invoice.id,
             "invoice_number": invoice.invoice_number,
             "business_name": invoice.customer.name,
