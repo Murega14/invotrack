@@ -42,7 +42,10 @@ def register_customer():
                 flash('All fields are required', 'error')
                 return jsonify({"error": "all fields are required"}), 403
             
-            new_customer = Customer(name=name, email=email, phone_number=phone_number)
+            new_customer = Customer(user_id=user.id,
+                                    name=name,
+                                    email=email,
+                                    phone_number=phone_number)
             db.session.add(new_customer)
             db.session.commit()
             
