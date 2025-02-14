@@ -149,7 +149,7 @@ def user_profile():
     """
     try:
         google_id = session.get("google_id")
-        user = User.query.filter_by(google_id).first()
+        user = User.query.filter_by(google_id=google_id).first()
         
         if not user:
             logger.error(f"user does not exist: {google_id}")

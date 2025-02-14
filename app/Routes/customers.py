@@ -27,7 +27,7 @@ def register_customer():
                 logger.error("google_id not found in session")
                 return jsonify({"error": "google_id not found in session"}), 400
             
-            user = User.query.filter_by(google_id).first()
+            user = User.query.filter_by(google_id=google_id).first()
             
             if not user:
                 logger.error(f"user not found: {google_id}")
