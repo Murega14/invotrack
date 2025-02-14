@@ -57,38 +57,59 @@ def user_invoices():
             return jsonify({"error": "Not authenticated"}), 401
             
         user = User.query.filter_by(google_id=google_id).first()
-        if not user:
-            logger.error(f"User not found: {google_id}")
+        if not user or not user.id:
+            logger.error(f"User not found or invalid: {google_id}")
             return jsonify({"error": "User not found"}), 404
         
         customer = Customer.query.filter_by(user_id=user.id).first()
-        if not customer:
+        if not customer or not customer.id:
             logger.error(f"Customer profile not found for user ID: {user.id}")
             return redirect(url_for("customers.register"))
         
         try:
-            invoices = Invoice.query.filter_by(user_id=user.id).all()
-            if not invoices:
+            invoice_records = db.session.query(
+                Invoice.id,
+                Invoice.invoice_number,
+                Invoice.amount,
+                Invoice.date_issued,
+                Invoice.due_date,
+                Invoice.status
+            ).filter(Invoice.user_id == user.id).all()
+            
+            if not invoice_records:
                 generate_random_invoices(user_id=user.id, customer_id=customer.id)
-                invoices = Invoice.query.filter_by(user_id=user.id).all()
+                invoice_records = db.session.query(
+                    Invoice.id,
+                    Invoice.invoice_number,
+                    Invoice.amount,
+                    Invoice.date_issued,
+                    Invoice.due_date,
+                    Invoice.status
+                ).filter(Invoice.user_id == user.id).all()
             
             invoices_data = []
-            for invoice in invoices:
-                try:
-                    invoice_data = {
-                        "id": invoice.id,
-                        "invoice_number": invoice.invoice_number,
-                        "business_name": customer.name,
-                        "amount": float(invoice.amount),
-                        "date_issued": invoice.date_issued.isoformat(),
-                        "due_date": invoice.due_date.isoformat(),
-                        "status": invoice.status
-                    }
-                    invoices_data.append(invoice_data)
-                except Exception as e:
-                    logger.error(f"Error processing invoice {invoice.id}: {str(e)}")
-                    continue
+            for record in invoice_records:
+                if record.id is not None:
+                    try:
+                        invoice_data = {
+                            "id": record.id,
+                            "invoice_number": record.invoice_number,
+                            "business_name": customer.name,
+                            "amount": float(record.amount) if record.amount is not None else 0.0,
+                            "date_issued": record.date_issued.isoformat() if record.date_issued else None,
+                            "due_date": record.due_date.isoformat() if record.due_date else None,
+                            "status": record.status or "unknown"
+                        }
+                        invoices_data.append(invoice_data)
+                    except Exception as e:
+                        logger.error(f"Error processing invoice record {record.id}: {str(e)}")
+                        continue
+                else:
+                    logger.warning("Skipping invoice record with no ID")
             
+            if not invoices_data:
+                logger.warning(f"No valid invoices found for user {user.id}")
+                
             return render_template('invoice.html', invoices_data=invoices_data)
             
         except Exception as e:
@@ -98,7 +119,6 @@ def user_invoices():
     except Exception as e:
         logger.error(f'Failed to fetch user invoices: {str(e)}')
         return jsonify({"error": "Internal server error"}), 500
-
 
 @invoices.route('/invoice/<int:id>', methods=['GET'])
 @login_is_required
