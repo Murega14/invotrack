@@ -91,7 +91,7 @@ def callback():
             return abort(500)
         
         credentials = flow.credentials
-        request_session = request.sessions.Session()
+        request_session = requests.session.Session()
         cached_session = cachecontrol.CacheControl(request_session)
         token_request = google.auth.transport.requests.Request(session=cached_session)
         
