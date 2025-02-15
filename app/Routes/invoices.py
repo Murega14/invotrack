@@ -45,243 +45,89 @@ def generate_random_invoices(user_id: int, customer_id: int, num_invoices=10):
         logger.error(f"Failed to generate random invoices: {str(e)}")
         raise
 
-
-@invoices.route('/view_invoice', methods=['GET'])
+@invoices.route('/invoices', methods=['GET'])
 @login_is_required
-def user_invoices():
-    """Returns a list of user invoices"""
-    try:
-        google_id = session.get('google_id')
-        if not google_id:
-            logger.error("No google_id in session")
-            return jsonify({"error": "Not authenticated"}), 401
-            
-        user = User.query.filter_by(google_id=google_id).first()
-        if not user or not user.id:
-            logger.error(f"User not found or invalid: {google_id}")
-            return jsonify({"error": "User not found"}), 404
-        
-        customer = Customer.query.filter_by(user_id=user.id).first()
-        if not customer or not customer.id:
-            logger.error(f"Customer profile not found for user ID: {user.id}")
-            return redirect(url_for("customers.register"))
-        
-        try:
-            invoice_records = db.session.query(
-                Invoice.id,
-                Invoice.invoice_number,
-                Invoice.amount,
-                Invoice.date_issued,
-                Invoice.due_date,
-                Invoice.status
-            ).filter(Invoice.user_id == user.id).all()
-            
-            if not invoice_records:
-                generate_random_invoices(user_id=user.id, customer_id=customer.id)
-                invoice_records = db.session.query(
-                    Invoice.id,
-                    Invoice.invoice_number,
-                    Invoice.amount,
-                    Invoice.date_issued,
-                    Invoice.due_date,
-                    Invoice.status
-                ).filter(Invoice.user_id == user.id).all()
-            
-            invoices_data = []
-            for record in invoice_records:
-                if record.id is not None:
-                    try:
-                        invoice_data = {
-                            "id": record.id,
-                            "invoice_number": record.invoice_number,
-                            "business_name": customer.name,
-                            "amount": float(record.amount) if record.amount is not None else 0.0,
-                            "date_issued": record.date_issued.isoformat() if record.date_issued else None,
-                            "due_date": record.due_date.isoformat() if record.due_date else None,
-                            "status": record.status or "unknown"
-                        }
-                        invoices_data.append(invoice_data)
-                    except Exception as e:
-                        logger.error(f"Error processing invoice record {record.id}: {str(e)}")
-                        continue
-                else:
-                    logger.warning("Skipping invoice record with no ID")
-            
-            if not invoices_data:
-                logger.warning(f"No valid invoices found for user {user.id}")
-                
-            return render_template('invoice.html', invoices_data=invoices_data)
-            
-        except Exception as e:
-            logger.error(f"Error querying invoices: {str(e)}")
-            raise
-            
-    except Exception as e:
-        logger.error(f'Failed to fetch user invoices: {str(e)}')
-        return jsonify({"error": "Internal server error"}), 500
-
-@invoices.route('/invoice/<int:id>', methods=['GET'])
-@login_is_required
-def view_invoice(id: int):
-    """Return the details of a single invoice
-    Args:
-        id (int): unique identifier of an invoice
-    Returns:
-        Response: HTML page with the invoice details or a JSON error message
+def view_invoices():
+    """
+    _summary_
     """
     try:
         google_id = session.get('google_id')
-        if not google_id:
-            logger.error("No google_id in session")
-            return jsonify({"error": "Not authenticated"}), 401
-            
         user = User.query.filter_by(google_id=google_id).first()
         if not user:
-            logger.error(f"User not found: {google_id}")
-            return jsonify({"error": "User not found"}), 404
+            logger.error(f"user not found: {google_id}")
+            return jsonify({"error": "user not found"}), 404
         
-        invoice = Invoice.query.get(id)
-        if not invoice:
-            logger.error(f"Invoice not found: {id}")
-            return jsonify({"error": "Invoice not found"}), 404
+        customer = Customer.query.filter_by(user_id=user.id).first_or_404("Customer not found")
+        if not customer:
+            return redirect('/customers/register')
+        
+        invoices = Invoice.query.filter_by(user_id=user.id, customer_id=customer.id).all()
+        if len(invoices) == 0:
+            generate_random_invoices(user_id=user.id, customer_id=customer.id)
+            invoices = Invoice.query.filter_by(user_id=user.id, customer_id=customer.id)
+            
+        invoices_list =[{
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "customer_name": customer.name,
+            "amount": float(invoice.amount),
+            "date_issued": invoice.date_issued.isoformat(),
+            "due_date": invoice.due_date.isoformat(),
+            "status": invoice.status
+        } for invoice in invoices]
+        
+        return render_template('invoice.html', invoices_data=invoices_list)
+    
+    except Exception as e:
+        logger.error(f"failed to fetch invoices: {str(e)}")
+        return jsonify({"error": "internal server error"}), 500
+    
+@invoices.route('/invoices/add', methods=['POST'])
+@login_is_required
+def create_invoice():
+    """
+    _summary_
+    """
+    try:
+        pass
+    except:
+        pass
+    
+@invoices.route('/invoices/<int:id>', methods=['GET'])
+@login_is_required
+def view_single_invoice(id: int):
+    """
+    _summary_
+
+    Args:
+        id (int): _description_
+    """
+    try:
+        google_id = session.get('google_id')
+        user = User.query.filter_by(google_id=google_id).first_or_404("user not found")
+        
+        invoice = Invoice.query.get_or_404(id)
         
         if invoice.user_id != user.id:
-            logger.error(f"Unauthorized access by {user.id} for invoice {id}")
-            return jsonify({"error": "Unauthorized access"}), 403
-        
-        customer = Customer.query.get(invoice.customer_id)
-        if not customer:
-            logger.error(f"Customer not found for invoice {id}")
-            return jsonify({"error": "Customer not found"}), 404
+            logger.error(f"user {user.id} does not own {id}")
+            return jsonify({"error": "unauthorized access"}), 403
         
         invoice_data = {
             "id": invoice.id,
             "invoice_number": invoice.invoice_number,
-            "customer_name": customer.name,
+            "customer_name": invoice.customer.name,
             "customer_email": user.email,
             "amount": float(invoice.amount),
-            "status": invoice.status,
+            "date_issued": invoice.date_issued.isoformat(),
             "due_date": invoice.due_date.isoformat(),
-            "date_issued": invoice.date_issued.isoformat()
+            "status": invoice.status
         }
         
-        return render_template('single_invoice.html', invoice_data=invoice_data, id=id)
+        return render_template('single_invoice.html', invoice_data=invoice_data)
     
     except Exception as e:
-        logger.error(f"Failed to fetch invoice details: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-
-@invoices.route('/invoice/<int:id>/mark-paid', methods=['PATCH'])
-@login_is_required
-def mark_as_paid(id: int):
-    """Change invoice status to paid
-    Args:
-        id (int): invoice identifier
-    Returns:
-        Response: Redirect to the invoice view page or a JSON error message
-    """
-    try:
-        google_id = session.get('google_id')
-        if not google_id:
-            logger.error("No google_id in session")
-            return jsonify({"error": "Not authenticated"}), 401
-            
-        user = User.query.filter_by(google_id=google_id).first()
-        if not user:
-            logger.error(f"User not found: {google_id}")
-            return jsonify({"error": "User not found"}), 404
+        logger.error(f"failed to fetch invoice: {str(e)}")
+        return jsonify({"error": "internal server error"}), 500
         
-        invoice = Invoice.query.get(id)
-        if not invoice:
-            logger.error(f"Invoice not found: {id}")
-            return jsonify({"error": "Invoice not found"}), 404
-            
-        if invoice.user_id != user.id:
-            logger.error(f"Unauthorized access by {user.id} for invoice {id}")
-            return jsonify({"error": "Unauthorized access"}), 403
         
-        invoice.status = "paid"
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Failed to update invoice status: {str(e)}")
-            raise
-        
-        return redirect(url_for('invoices.view_invoice', id=id))
-    
-    except Exception as e:
-        logger.error(f"Failed to change invoice status: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-
-@invoices.route('/add_invoice', methods=['POST'])
-@login_is_required
-def create_invoice():
-    """Create a new invoice
-    Returns:
-        Response: JSON response indicating success or failure of invoice creation
-    """
-    try:
-        google_id = session.get('google_id')
-        if not google_id:
-            logger.error("No google_id in session")
-            return jsonify({"error": "Not authenticated"}), 401
-            
-        user = User.query.filter_by(google_id=google_id).first()
-        if not user:
-            logger.error(f"User not found: {google_id}")
-            return jsonify({"error": "User not found"}), 404
-        
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        required_fields = ['invoice_number', 'customer_id', 'amount', 'date_issued', 'due_date']
-        if not all(field in data for field in required_fields):
-            logger.error("Missing required fields")
-            return jsonify({"error": "All fields are required"}), 400
-        
-        try:
-            amount = float(data['amount'])
-            date_issued = datetime.strptime(data['date_issued'], '%Y-%m-%d')
-            due_date = datetime.strptime(data['due_date'], '%Y-%m-%d')
-        except (ValueError, TypeError) as e:
-            logger.error(f"Invalid data format: {str(e)}")
-            return jsonify({"error": "Invalid data format"}), 400
-            
-        customer = Customer.query.get(data['customer_id'])
-        if not customer:
-            return jsonify({"error": "Customer not found"}), 404
-            
-        if customer.user_id != user.id:
-            return jsonify({"error": "Unauthorized access to customer"}), 403
-        
-        new_invoice = Invoice(
-            user_id=user.id,
-            customer_id=data['customer_id'],
-            invoice_number=data['invoice_number'],
-            amount=amount,
-            date_issued=date_issued,
-            due_date=due_date,
-            status="unpaid"
-        )
-        
-        db.session.add(new_invoice)
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Failed to save new invoice: {str(e)}")
-            raise
-        
-        logger.info(f"New invoice has been added: id {new_invoice.id}")
-        return jsonify({
-            "message": "Invoice added successfully",
-            "invoice_id": new_invoice.id
-        }), 201
-                    
-    except Exception as e:
-        logger.error(f"Failed to create invoice: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
