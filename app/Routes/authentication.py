@@ -12,6 +12,7 @@ from datetime import datetime
 from functools import wraps
 import tempfile
 import logging
+import re
 
 load_dotenv()
 
@@ -57,6 +58,17 @@ def login_is_required(function):
             return function(*args, **kwargs)
     wrapper.__name__ = function.__name__
     return wrapper
+
+def validate_password(password):
+    if len(password) < 8:
+        return False
+    if not re.search(r"[a-z]", password):
+        return False
+    if not re.search(r"\d", password):
+        return False
+    if not re.search(r"[A-Z]", password):
+        return False
+    return True
 
 @authentication.route('/login')
 @authentication.route('/signup')
@@ -174,3 +186,59 @@ def user_profile():
     except Exception as e:
         logger.error(f"Failed to fetch user details: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
+    
+@authentication.route('/signup/form', methods=['POST'])
+def signup_form():
+    """
+    _summary_
+    """
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not all([name, email, password]):
+            logger.error("not all fields have been submitted")
+            return jsonify({"error": "all fields are required"}), 400
+        
+        if not validate_password(password):
+            return jsonify({"Error": "password must contain uppercase, lowercase, number and atleast 8 characters"}), 400
+        
+        if db.session.query(User).filter(User.email==email).first():
+            logger.error(f"email exists: {email}")
+            return jsonify({"error": "email exists"}), 400
+        
+        new_user = User(name=name, email=email)
+        new_user.hash_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return redirect('/customers/register')
+    
+    except Exception as e:
+        logger.error(f"failed to create user account: {str(e)}")
+        db.session.rollback()
+        return jsonify({"Error": "Internal server error"}), 500
+    
+@authentication.route('/login/form', methods=['POST'])
+def login_form():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not all([email, password]):
+            logger.error("not all fields have been submitted")
+            return jsonify({"error": "all fields are required"}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        if not user or user.check_hash(password):
+            logger.error("invalid login credentials")
+            return jsonify({"error": "invalid login credentials"}), 401
+        
+        return redirect('/dashboard')
+    
+    except Exception as e:
+        logger.error(f"failed to login user: {str(e)}")
+        return jsonify({"Error": "internal server error"}), 500
