@@ -28,34 +28,34 @@ class User(db.Model, SerializerMixin):
         return check_password_hash(self.password_hash, password)
     
     
-    oauth_sessions = db.relationship('OAuthSession', backref='user', lazy=True)
     customers = db.relationship('Customer', backref='user', lazy=True)
     invoices = db.relationship('Invoice', backref='user', lazy=True)
     payments = db.relationship('Payment', backref='user', lazy=True)
 
-    serialize_rules = ('-oauth_sessions', '-customers', '-invoices', '-payments')
-
-class OAuthSession(db.Model):
-    __tablename__ = 'oauth_sessions'
+    serialize_rules = ('-customers', '-invoices', '-payments')
+    
+class Business(db.Model, SerializerMixin):
+    __tablename__ = 'business'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    access_token = db.Column(db.String(200), nullable=False)
-    refresh_token = db.Column(db.String(200), nullable=False)
-    token_expiry = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    google_id = db.Column(db.String(), unique=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.String())
     
-    def is_token_expired(self):
-        return self.token_expiry < datetime.utcnow()
+    def hash_password(self, password):
+        self.password_hash = generate_password_hash(password)
     
-    def update_tokens(self, access_token, token_expiry, refresh_token=None):
-        self.access_token = access_token
-        self.token_expiry = token_expiry
-        if refresh_token:
-            self.refresh_token = refresh_token
-        self.updated_at = datetime.utcnow()
-        db.session.commit()
+    def check_hash(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    
+    customers = db.relationship('Customer', backref='business', lazy=True)
+    invoices = db.relationship('Invoice', backref='business', lazy=True)
+    payments = db.relationship('Payment', backref='business', lazy=True)
+
+    serialize_rules = ('-customers', '-invoices', '-payments')
+
 
 class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'

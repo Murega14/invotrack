@@ -4,7 +4,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, get_jw
 from ..extensions import logger, validate_password, generate_reset_token, verify_reset_token, flow, GOOGLE_CLIENT_ID
 import re
 from email_validator  import validate_email, EmailNotValidError
-from ..models import User, db
+from ..models import Business, db
 from datetime import timedelta
 from sqlalchemy.exc import SQLAlchemyError
 from google.oauth2 import id_token
@@ -37,22 +37,22 @@ def signup_business():
         if not re.match(r"\d{10}$", phone_number):
             return jsonify({"Error": "phone number must be 10 digits"}), 400
         
-        if User.query.filter(User.email==email).first():
+        if Business.query.filter(Business.email==email).first():
             return jsonify({"error": "that email already exixts"}), 400
         
-        new_user = User(
+        new_business = Business(
             name=name,
             email=email,
-            phone_number=phone_number
-        httponly=True,
-        secure=True
+            phone_number=phone_number,
+            httponly=True,
+            secure=True
         )
-        new_user.hash_password(password)
-        db.session.add(new_user)
+        new_business.hash_password(password)
+        db.session.add(new_business)
         db.session.commit()
         
         expires = timedelta(hours=2)
-        access_token = create_access_token(identity=new_user.id, expires_delta=expires)
+        access_token = create_access_token(identity=new_business.id, expires_delta=expires)
         
         response = jsonify({
             "success": True,
@@ -67,7 +67,7 @@ def signup_business():
         return response, 200
     
     except (SQLAlchemyError, Exception) as e:
-        logger.error(f"Failed to signup user: {str(e)}")
+        logger.error(f"Failed to signup Business: {str(e)}")
         db.rollback()
         return jsonify({"error": "internal server error"}), 500
     
@@ -101,20 +101,20 @@ def callback():
         session["name"] = id_info.get("name")
         email = id_info.get("email")
         
-        user = User.query.filter_by(email=email).first()
-        if not user:
+        business = Business.query.filter_by(email=email).first()
+        if not business:
             try:
-                user = User(name=session["name"], email=email)
-                user.hash_password(session["google_id"])
-                db.session.add(user)
+                business = Business(name=session["name"], email=email)
+                business.hash_password(session["google_id"])
+                db.session.add(business)
                 db.session.commit()
             except SQLAlchemyError as e:
                 logger.error(f"database error: {str(e)}")
                 db.session.rollback()
-                return jsonify({"error": "failed to create user"}), 500
+                return jsonify({"error": "failed to create Business"}), 500
         
         expires = timedelta(hours=2)
-        access_token = create_access_token(identity=user.id, expires_delta=expires)
+        access_token = create_access_token(identity=business.id, expires_delta=expires)
         
         response = jsonify({
             "success": True,
@@ -132,6 +132,37 @@ def callback():
         logger.error(f"Failed to complete Google OAuth2 login/signup: {str(e)}")
         return jsonify({"error": "internal server error"}), 500
     
-            
+@business_auth.route('/api/v1/business/login', methods=['GET'])
+def login_business():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
         
+        if not all([email, password]):
+            return jsonify({"error": "all fields are required"}), 400
         
+        business = Business.query.filter_by(email=email).first()
+        if not business or business.check_hash(password):
+            logger.error("invalid login credentials")
+            return jsonify({"error": "invalid login credentials"}), 403
+        
+        expires = timedelta(hours=2)
+        access_token = create_access_token(identity=business.id, expires_delta=expires)
+        refresh_token = create_refresh_token(identity=business.id)
+        
+        response = jsonify({
+            "sucess": True,
+            "message": "login successful",
+            "access_token": access_token,
+            "refresh_token": refresh_token
+        })
+        response.set_cookie("session_token", refresh_token, secure=True)
+        
+        return response, 200
+    
+    except Exception as e:
+        logger.error(f"failed to login Business: {str(e)}")
+        return jsonify({"error": "failed to login Business"})
+
+    
