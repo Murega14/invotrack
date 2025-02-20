@@ -1,9 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData, Enum
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy import MetaData
 from sqlalchemy_serializer import SerializerMixin
-from datetime import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy.dialects.postgresql import ENUM
 
 metadata = MetaData(naming_convention={
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
@@ -11,7 +10,15 @@ metadata = MetaData(naming_convention={
 
 db = SQLAlchemy(metadata=metadata)
 
-# Database Models
+invoice_status_enum = ENUM(
+    'pending',
+    'overdue',
+    'paid',
+    'cancelled',
+    name='invoice_status_enum',
+    create_type=True
+)
+
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
     
@@ -19,18 +26,17 @@ class User(db.Model, SerializerMixin):
     google_id = db.Column(db.String(), unique=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String())
+    password_hash = db.Column(db.String(), nullable=False)
     
     def hash_password(self, password):
         self.password_hash = generate_password_hash(password)
     
     def check_hash(self, password):
         return check_password_hash(self.password_hash, password)
-    
-    
-    customers = db.relationship('Customer', backref='user', lazy=True)
-    invoices = db.relationship('Invoice', backref='user', lazy=True)
-    payments = db.relationship('Payment', backref='user', lazy=True)
+        
+    customers = db.relationship('Customer', back_populates="user", cascade="all, delete-orphan", lazy=True)
+    invoices = db.relationship('Invoice', back_populates="user", cascade="all, delete-orphan", lazy=True)
+    payments = db.relationship('Payment', back_populates="user", cascade="all, delete-orphan", lazy=True)
 
     serialize_rules = ('-customers', '-invoices', '-payments')
     
@@ -48,64 +54,72 @@ class Business(db.Model, SerializerMixin):
     
     def check_hash(self, password):
         return check_password_hash(self.password_hash, password)
-    
-    
-    customers = db.relationship('Customer', backref='business', lazy=True)
-    invoices = db.relationship('Invoice', backref='business', lazy=True)
-    payments = db.relationship('Payment', backref='business', lazy=True)
+        
+    customers = db.relationship('Customer', back_populates="business", cascade="all, delete-orphan", lazy=True)
+    invoices = db.relationship('Invoice', back_populates="business", cascade="all, delete-orphan", lazy=True)
+    payments = db.relationship('Payment', back_populates="business", cascade="all, delete-orphan", lazy=True)
 
     serialize_rules = ('-customers', '-invoices', '-payments')
 
-
 class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
-
+    
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    name = db.Column(db.String(80), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
-    phone_number = db.Column(db.String(20), nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey('business.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
     
-    invoices = db.relationship('Invoice', backref='customer',lazy=True)
+    user = db.relationship('User', back_populates="customers")
+    business = db.relationship('Business', back_populates="customers")
+    invoices = db.relationship('Invoice', back_populates="customer", cascade="all, delete-orphan", lazy=True)
+    payments = db.relationship('Payment', back_populates="customer", cascade="all, delete-orphan", lazy=True)
 
-    serialize_rules = ('-user', '-invoices')
-
-    def __repr__(self):
-        return f'<Customer {self.id}, {self.name}, {self.email}, {self.phone_number}>'
+    serialize_rules = ('-invoices', '-payments')
 
 class Invoice(db.Model, SerializerMixin):
     __tablename__ = 'invoices'
-
+    
     id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
-    invoice_number = db.Column(db.String(20), nullable=False, unique=True)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey('business.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=True)
+    amount = db.Column(db.Integer, nullable=False)
     date_issued = db.Column(db.Date, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.Enum('unpaid', 'paid', 'overdue', 'partial payment', name='invoice_status'), default='unpaid')
+    status = db.Column(invoice_status_enum, default='pending', nullable=False)
     
-    payments = db.relationship('Payment', back_populates='invoice')
-
-    serialize_rules = ('-user', '-payments.invoice', '-customer')
-
-    def __repr__(self):
-        return f'<Invoice {self.id}, {self.invoice_number}, {self.amount}, {self.date_issued}, {self.due_date}, {self.status}>'
+    user = db.relationship('User', back_populates="invoices")
+    business = db.relationship('Business', back_populates="invoices")
+    customer = db.relationship('Customer', back_populates="invoices")
+    details = db.relationship('InvoiceDetail', back_populates="invoice", cascade="all, delete-orphan", lazy=True)
+    payments = db.relationship('Payment', backref="invoice", cascade="all, delete-orphan", lazy=True)
 
 class Payment(db.Model, SerializerMixin):
     __tablename__ = 'payments'
-
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
-    payment_method = db.Column(db.Enum('Family Bank', 'Coop Bank', 'Mpesa', name='payment_method'))
-    transaction_code = db.Column(db.String(50), nullable=False)
-    amount = db.Column(db.Numeric(10, 2), nullable=False)
-    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey('business.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    date_paid = db.Column(db.Date, nullable=False)
 
-    invoice = db.relationship('Invoice', back_populates='payments')
+    user = db.relationship('User', back_populates="payments")
+    business = db.relationship('Business', back_populates="payments")
+    customer = db.relationship('Customer', back_populates="payments")
 
-    serialize_rules = ('-user', '-invoice.payments')
+    serialize_rules = ('-invoice', '-user', '-business', '-customer')
 
-    def __repr__(self):
-        return f'<Payment {self.id}, {self.invoice.invoice_number}, {self.payment_method}, {self.transaction_code}, {self.amount}, {self.payment_date}>'
+class InvoiceDetail(db.Model):
+    __tablename__ = 'invoice_details'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    services = db.Column(db.String(), nullable=False)
+    sub_total = db.Column(db.Integer, nullable=False)
+    
+    invoice = db.relationship('Invoice', back_populates="details")

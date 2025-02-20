@@ -7,6 +7,8 @@ from flask_admin import Admin
 from flask_mail import Mail
 from flask_apscheduler import APScheduler
 from .models import db
+from flask_jwt_extended import JWTManager
+
 
 load_dotenv()
 
@@ -14,6 +16,7 @@ mail = Mail()
 migrate = Migrate()
 admin = Admin(name='Admin Panel', template_mode='bootstrap4')
 scheduler = APScheduler()
+jwt = JWTManager()
 
 def create_app():
     app = Flask(__name__)
@@ -35,6 +38,7 @@ def create_app():
     migrate.init_app(app, db)
     admin.init_app(app)
     scheduler.init_app(app)
+    jwt.init_app(app)
     
     with app.app_context():
         from .models import User, Customer, Invoice, Payment

@@ -3,7 +3,6 @@ from flask import render_template, session, flash, redirect
 from .Routes.authentication import login_is_required
 from.models import *
 from sqlalchemy import func
-from .templates import *
 
 app = create_app()
 

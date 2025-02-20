@@ -1,6 +1,6 @@
 from flask import (Blueprint, session, request, jsonify, redirect)
 from functools import wraps
-from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity
+from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, jwt_required
 from ..extensions import logger, validate_password, generate_reset_token, verify_reset_token, flow, GOOGLE_CLIENT_ID
 import re
 from email_validator  import validate_email, EmailNotValidError
@@ -164,5 +164,59 @@ def login_user():
     except Exception as e:
         logger.error(f"failed to login user: {str(e)}")
         return jsonify({"error": "failed to login user"})
-
+ 
+@user_auth('/api/v1/user/logout', methods=['POST'])
+def logout():
+    try:
+        session.clear()
+        response = jsonify({
+            "message": "logged out"
+        })
+        response.set_cookie('session_token', '', expires=0)
+        return response, 200
     
+    except Exception as e:
+        logger.error(f"failed to logout user: {str(e)}")
+        return jsonify({"error": "failed to logout"}), 500
+    
+@user_auth.route('/api/v1/change_password', methods=['PUT'])
+@jwt_required()
+def password_change():
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            logger.error(f"user not found: {user_id}")
+            return jsonify({"error": "user not found"}), 404
+        
+        data = request.get_json()
+        old_password = data.get('old_password')
+        new_password = data.get('new_password')
+        
+        if not user.check_hash(old_password):
+            return jsonify({"Error": "invalid old password"}), 400
+        
+        if old_password == new_password:
+            return jsonify({"error": "old password cannot be the same as new password"}), 400
+        
+        if not validate_password(new_password):
+            return jsonify({"error": "password must contain 8 characters, 1 uppercase, lowercase and number"}), 400
+        
+        try:
+            hashed_password = user.hash_password(new_password)
+            user.password_hash = hashed_password
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "message": "password changed successfully"
+            }), 200
+            
+        except SQLAlchemyError as e:
+            logger.error(f"failed to change user password: {str(e)}")
+            db.session.rollback()
+            return jsonify({"error": "failed to change user password"}), 500
+            
+    except Exception as e:
+        logger.error(f"Endpoint error: {str(e)}")
+        return jsonify({"Error": "internal server error"}), 500
