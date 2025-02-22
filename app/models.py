@@ -38,7 +38,7 @@ class Invoice(db.Model, BaseModel):
     
     invoice_number = db.Column(db.String(50), unique=True, nullable=False)
     issuer_id = db.Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    recipient_business_id = db.Column(UUID(as_uuid=True), ForeignKey('businesses.id'), nullable=False)
+    business_id = db.Column(UUID(as_uuid=True), ForeignKey('businesses.id'), nullable=False)
     status = db.Column(Enum('pending', 'overdue', 'cancelled', 'paid', name='invoice_status'), default='pending')
     total_amount = db.Column(Numeric(10, 2), nullable=False)
     date_issued = db.Column(db.DateTime, default=func.now())

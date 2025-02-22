@@ -1,7 +1,7 @@
 from flask import (Blueprint, session, request, jsonify, redirect)
 from functools import wraps
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, jwt_required
-from ..extensions import logger, validate_password, generate_reset_token, verify_reset_token, flow, GOOGLE_CLIENT_ID
+from ..extensions import logger, validate_password, flow, GOOGLE_CLIENT_ID, validate_phone_number
 import re
 from email_validator  import validate_email, EmailNotValidError
 from ..models import User, db
@@ -34,7 +34,7 @@ def signup_user():
         if not validate_password(password):
             return jsonify({"error": "password must be atleast 8 characters containing an uppercase, lowercase letter and a number"}), 400
         
-        if not re.match(r"\d{10}$", phone_number):
+        if not validate_phone_number(phone_number):
             return jsonify({"Error": "phone number must be 10 digits"}), 400
         
         if User.query.filter(User.email==email).first():

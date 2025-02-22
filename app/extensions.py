@@ -45,6 +45,11 @@ def validate_password(password):
         return False
     return True
 
+def validate_phone_number(phone_number):
+    if not re.search(r"\d{10}$", phone_number):
+        return False
+    return True
+
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 client_secrets_data = os.getenv("CLIENT_SECRETS")
