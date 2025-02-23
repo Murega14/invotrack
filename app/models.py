@@ -31,7 +31,7 @@ class Business(db.Model, BaseModel):
     phone_number = db.Column(db.String(10), nullable=False)
     email = db.Column(db.String(), nullable=False)
     
-    invoices = db.relationship('Invoice', backref='recipient_business', lazy=True)
+    invoices = db.relationship('Invoice', backref='business', lazy=True)
 
 class Invoice(db.Model, BaseModel):
     __tablename__ = 'invoices'
