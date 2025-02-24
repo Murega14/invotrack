@@ -194,3 +194,35 @@ def get_single_invoice(id: int):
             "error": str(e)
         }), 500
         
+@invoices.route('/api/v1/invoices/<int:id>/delete', methods=['DELETE'])
+@jwt_required()
+def delete_invoice(id: int):
+    try:
+        user_id = get_jwt_identity()
+        
+        invoice = Invoice.query.get_or_404(id)
+        if invoice.owner_id != user_id:
+            return jsonify({"Error": "unauthorized access"})
+        
+        try:
+            db.session.delete(invoice)
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "message": "deleted invoice successfully"
+            }), 200
+        
+        except SQLAlchemyError as e:
+            logger.error(f"database error: {str(e)}")
+            db.session.rollback()
+            return jsonify({
+                "message": "failed to delete invoice",
+                "error": str(e)
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({
+            "message": "internal server error",
+            "error": str(e)
+        }), 500

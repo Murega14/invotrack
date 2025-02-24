@@ -13,7 +13,7 @@ def user_details():
     try:
         user_id = get_jwt_identity()
         
-        user = User.query.get_or_404(id)
+        user = User.query.get_or_404(user_id)
         
         user_profile = {
             "id": user.id,
