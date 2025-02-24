@@ -93,8 +93,7 @@ def create_invoice():
             "message": "internal server error",
             "error": str(e)
         }), 500
-                
-                
+                               
 @invoices.route('/api/v1/invoices', methods=['GET'])
 @jwt_required()
 def get_user_invoices():
@@ -220,6 +219,140 @@ def delete_invoice(id: int):
                 "error": str(e)
             }), 400
             
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({
+            "message": "internal server error",
+            "error": str(e)
+        }), 500       
+
+@invoices.route('/api/v1/invoices/<int:id>/cancel', methods=['PATCH'])
+@jwt_required()
+def cancel_invoice(id: int):
+    try:
+        user_id = get_jwt_identity()
+        invoice = Invoice.query.get_or_404(id)
+        
+        if invoice.owner_id != user_id:
+            return jsonify({"error": "unauthorized access"}), 403
+        
+        try:
+            invoice.status = 'canceled'
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "message": "invoice has been canceled"
+            }), 200
+        
+        except SQLAlchemyError as e:
+            logger.error(f"database error: {str(e)}")
+            db.session.rollback()
+            return jsonify({
+                "message": "failed to cancel invoice",
+                "error": str(e)
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({
+            "message": "internal server error",
+            "error": str(e)
+        }), 500
+    
+@invoices.route('/api/v1/invoices/<int:id>/update', methods=['PUT'])
+@jwt_required()
+def update_invoice(id: int):
+    try:
+        user_id = get_jwt_identity()
+        
+        invoice = InvoiceItem.query.filter_by(invoice_id=id).first()
+        if not invoice:
+            return jsonify({"error": "invoice not found"}), 404
+        
+        data = request.get_json()
+        
+        try:
+            if 'description' in data:
+                invoice.description = data['description']
+            if 'quantity' in data:
+                invoice.quantity = int(data['quantity'])
+            if 'unit_price' in data:
+                invoice.unit_price = float(data['unit_price'])
+                
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "message": "invoice details have been updated"
+            }), 200
+            
+        except SQLAlchemyError as e:
+            logger.error(f"database error: {str(e)}")
+            db.session.rollback()
+            return jsonify({
+                "message": "failed to update invoice details",
+                "error": str(e)
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({
+            "message": "internal server error",
+            "error": str(e)
+        }), 500
+ 
+@invoices.route('/api/v1/invoices/<string:status>', methods=['GET'])
+@jwt_required()
+def get_invoice_by_status(status: str):
+    try:
+        user_id = get_jwt_identity()
+        invoices = Invoice.query.filter_by(status=status, owner_id=user_id).all()
+        
+        if not invoices:
+            return jsonify({"error": f"no {status} invoices available"})
+        
+        invoices_list = [{
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "recipient": invoice.business.name if invoice.business else None,
+            "amount": float(invoice.amount),
+            "date_issued": invoice.date_issued.isoformat(),
+            "due_date": invoice.due_date.isoformat()
+        } for invoice in invoices]
+        
+        return jsonify({
+            "success": True,
+            "invoices": invoices_list
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({
+            "message": "internal server error",
+            "error": str(e)
+        }), 500
+        
+@invoices.route('api/v1/invoices/<int:business_id>/<string:status>', methods=['GET'])
+@jwt_required()
+def get_business_invoices_by_status(business_id: int, status: str):
+    try:
+        invoices = Invoice.query.filter_by(status=status, business_id=business_id).all()
+        if not invoices:
+            return jsonify({"error": f"no {status} invoices found"}), 404
+        
+        invoices_list = [{
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "issuer": invoice.issuer.name if invoice.issuer else None,
+            "amount": float(invoice.amount),
+            "date_issued": invoice.date_issued.isoformat(),
+            "due_date": invoice.due_date.isoformat()
+        } for invoice in invoices]
+        
+        return jsonify({
+            "success": True,
+            "invoices": invoices_list
+        }), 200
+        
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({

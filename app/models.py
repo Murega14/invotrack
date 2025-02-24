@@ -56,6 +56,16 @@ class InvoiceItem(db.Model, BaseModel):
     unit_price = db.Column(Numeric(10, 2), nullable=False)
     subtotal = db.Column(Numeric(10, 2), nullable=False)
     
+    def calculate_sub_total(self):
+        self.subtotal = self.unit_price * self.quantity
+        return self.subtotal
+    
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        if name in {'quantity', 'unit_price'}:
+            self.calculate_sub_total()
+            
+            
 class Payment(db.Model, BaseModel):
     __tablename__ = 'payments'
     
