@@ -4,6 +4,7 @@ from ..extensions import logger
 from email_validator import validate_email, EmailNotValidError
 from ..models import db, User
 from sqlalchemy.exc import SQLAlchemyError
+from uuid import UUID
 
 user = Blueprint('user', __name__)
 
@@ -20,7 +21,8 @@ def user_details():
                On failure, returns a JSON response with an error message and an HTTP status code 500.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id_str = get_jwt_identity()
+        user_id = UUID(user_id_str)
         
         user = User.query.get_or_404(user_id)
         

@@ -198,7 +198,7 @@ def login_user():
             return jsonify({"error": "all fields are required"}), 400
         
         user = User.query.filter_by(email=email).first()
-        if not user or user.check_hash(password):
+        if not user or not user.check_hash(password):
             logger.error("invalid login credentials")
             return jsonify({"error": "invalid login credentials"}), 403
         
