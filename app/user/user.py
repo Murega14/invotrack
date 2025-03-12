@@ -10,6 +10,15 @@ user = Blueprint('user', __name__)
 @user.route('/api/v1/user', methods=['GET'])
 @jwt_required()
 def user_details():
+    """
+    Fetches the details of the currently authenticated user.
+    This function retrieves the user ID from the JWT token, queries the database
+    for the user with that ID, and returns the user's profile information in JSON format.
+    If an error occurs during this process, it logs the error and returns an error message.
+    Returns:
+        tuple: A tuple containing a JSON response with the user's profile information and an HTTP status code 200 on success.
+               On failure, returns a JSON response with an error message and an HTTP status code 500.
+    """
     try:
         user_id = get_jwt_identity()
         
@@ -33,9 +42,22 @@ def user_details():
 @user.route('/api/v1/user/update', methods=['PUT'])
 @jwt_required()
 def update_user():
+    """
+    Update the user's profile information.
+    This function retrieves the user's ID from the JWT token, fetches the user
+    from the database, and updates the user's profile information based on the
+    provided JSON data. It supports updating the user's name and email. The email
+    is validated before updating. If any errors occur during the process, appropriate
+    error messages are returned.
+    Returns:
+        Response: A JSON response indicating the success or failure of the update operation.
+        - 200: If the user profile is updated successfully.
+        - 400: If there is an error with the input data or a database error occurs.
+        - 500: If an internal server error occurs.
+    """
     try:
         user_id = get_jwt_identity()
-        user = User.query.get_or_404(id)
+        user = User.query.get_or_404(user_id)
         
         data = request.get_json()
         if not data:

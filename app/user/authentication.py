@@ -16,6 +16,15 @@ user_auth = Blueprint('user_auth', __name__)
 
 @user_auth.route('/api/v1/user/signup', methods=['POST'])
 def signup_user():
+    """
+    Handles user signup by validating input data, creating a new user, and generating an access token.
+    Returns:
+        response (flask.Response): JSON response containing success message and access token if signup is successful.
+        status_code (int): HTTP status code indicating the result of the signup process.
+    Raises:
+        SQLAlchemyError: If there is an error with the database operations.
+        Exception: For any other exceptions that occur during the signup process.
+    """
     try:
         data = request.get_json()
         name = data.get('name')
@@ -73,6 +82,16 @@ def signup_user():
     
 @user_auth.route('/api/v1/user/google_signup', methods=['POST'])
 def google_signup():
+    """
+    Initiates the Google signup process by redirecting the user to the Google authorization URL.
+    This function uses the OAuth 2.0 flow to generate an authorization URL and state, which are then
+    stored in the session. The user is redirected to the authorization URL to grant consent.
+    Returns:
+        Response: A redirect response to the Google authorization URL if successful.
+        Response: A JSON response with an error message and a 500 status code if an exception occurs.
+    Raises:
+        Exception: If there is an error during the authorization URL generation or redirection process.
+    """
     try:
         authorization_url, state = flow.authorization_url(prompt="consent")
         session["state"] = state
@@ -84,6 +103,19 @@ def google_signup():
     
 @user_auth.route('/callback', methods=['GET'])
 def callback():
+    """
+    Handles the OAuth2 callback from Google, processes the authentication, and creates or retrieves a user in the database.
+    This function performs the following steps:
+    1. Fetches the OAuth2 token using the authorization response.
+    2. Verifies the ID token and retrieves user information.
+    3. Checks if the user exists in the database; if not, creates a new user.
+    4. Generates an access token for the user.
+    5. Sets a session cookie with the access token.
+    6. Returns a JSON response indicating success or failure.
+    Returns:
+        response (flask.Response): A JSON response containing the access token and a success message.
+        status_code (int): The HTTP status code (200 for success, 500 for internal server error).
+    """
     try:
         flow.fetch_token(authorization_response=request.url)
         credentials = flow.credentials
@@ -134,6 +166,29 @@ def callback():
     
 @user_auth.route('/api/v1/user/login', methods=['GET'])
 def login_user():
+    """
+    Authenticates a user and generates access and refresh tokens.
+    This function handles the login process for a user. It expects a JSON payload
+    with 'email' and 'password' fields. If the credentials are valid, it generates
+    an access token and a refresh token, sets the refresh token as a secure cookie,
+    and returns a success response with the tokens.
+    Returns:
+        Response: A JSON response with the following structure:
+            - On success (status code 200):
+                {
+                    "success": True,
+                    "access_token": "<access_token>",
+                    "refresh_token": "<refresh_token>"
+                }
+            - On failure (status code 400 or 403):
+                {
+                    "error": "<error_message>"
+                }
+            - On exception (status code 500):
+                {
+                    "error": "failed to login user"
+                }
+    """
     try:
         data = request.get_json()
         email = data.get('email')
@@ -167,6 +222,15 @@ def login_user():
  
 @user_auth('/api/v1/user/logout', methods=['POST'])
 def logout():
+    """
+    Logs out the current user by clearing the session and removing the session token cookie.
+    Returns:
+        tuple: A tuple containing the response object and the HTTP status code.
+            - On success: (response, 200) where response is a JSON object with a message "logged out".
+            - On failure: (response, 500) where response is a JSON object with an error message "failed to logout".
+    Raises:
+        Exception: If an error occurs during the logout process, it is logged and a 500 response is returned.
+    """
     try:
         session.clear()
         response = jsonify({
@@ -182,6 +246,20 @@ def logout():
 @user_auth.route('/api/v1/change_password', methods=['PUT'])
 @jwt_required()
 def password_change():
+    """
+    Change the password for the authenticated user.
+    This function handles the password change process for a user who is authenticated via JWT.
+    It verifies the old password, checks the validity of the new password, and updates the user's password
+    in the database if all checks pass.
+    Returns:
+        Response: A JSON response indicating the success or failure of the password change operation.
+        - 200: Password changed successfully.
+        - 400: Invalid old password, old password same as new password, or invalid new password.
+        - 404: User not found.
+        - 500: Internal server error or database error.
+    Raises:
+        Exception: If an unexpected error occurs during the process.
+    """
     try:
         user_id = get_jwt_identity()
         user = User.query.get(user_id)
