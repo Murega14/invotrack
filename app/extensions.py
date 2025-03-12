@@ -2,7 +2,7 @@ import logging
 from itsdangerous import SignatureExpired, BadSignature, URLSafeTimedSerializer
 from flask import current_app
 import re
-from google_auth_oauthlib import Flow
+from google_auth_oauthlib.flow import Flow
 import tempfile
 import os
 from dotenv import load_dotenv
@@ -10,7 +10,7 @@ import json
 
 load_dotenv()
 
-logging = logging.basicConfig(
+logging.basicConfig(
     level=logging.ERROR,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
@@ -54,10 +54,13 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 client_secrets_data = os.getenv("CLIENT_SECRETS")
 
+if not client_secrets_data:
+    raise ValueError("CLIENT_SECRETS environment variable is not set or empty")
+
 try:
     client_secrets_dict = json.loads(client_secrets_data)
 except json.JSONDecodeError as e:
-    raise ValueError("client_Secrets contains invalid json") from e
+    raise ValueError("CLIENT_SECRETS contains invalid JSON") from e
 
 with tempfile.NamedTemporaryFile(delete=False,suffix=".json", mode="w") as temp_file:
     temp_file_path = temp_file.name

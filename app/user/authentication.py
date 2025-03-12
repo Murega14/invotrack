@@ -2,7 +2,6 @@ from flask import (Blueprint, session, request, jsonify, redirect)
 from functools import wraps
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, jwt_required
 from ..extensions import logger, validate_password, flow, GOOGLE_CLIENT_ID, validate_phone_number
-import re
 from email_validator  import validate_email, EmailNotValidError
 from ..models import User, db
 from datetime import timedelta
@@ -220,7 +219,7 @@ def login_user():
         logger.error(f"failed to login user: {str(e)}")
         return jsonify({"error": "failed to login user"})
  
-@user_auth('/api/v1/user/logout', methods=['POST'])
+@user_auth.route('/api/v1/user/logout', methods=['POST'])
 def logout():
     """
     Logs out the current user by clearing the session and removing the session token cookie.

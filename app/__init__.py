@@ -40,27 +40,22 @@ def create_app():
     scheduler.init_app(app)
     jwt.init_app(app)
     
+    
     with app.app_context():
-        from .models import User, Customer, Invoice, Payment
-        from .views import InvoiceAdmin, UserAdmin
-        from flask_admin.contrib.sqla import ModelView
         
-        admin.add_view(UserAdmin(User, db.session))
-        admin.add_view(ModelView(Customer, db.session))
-        admin.add_view(InvoiceAdmin(Invoice, db.session))
-        admin.add_view(ModelView(Payment, db.session))
-        
-        from .Routes.authentication import authentication
-        from .Routes.invoices import invoices
-        from .Routes.customers import customers
-        from .Routes.payments import payments
+        from .user.authentication import user_auth
+        from .user.business import business
+        from .user.invoices import invoices
+        from .user.payments import payments
+        from .user.user import user
         from .mpesa import mpesa
         
-        app.register_blueprint(authentication)
-        app.register_blueprint(invoices, url_prefix="/invoices")
-        app.register_blueprint(customers, url_prefix="/customers")
-        app.register_blueprint(payments, url_prefix="/payments")
-        app.register_blueprint(mpesa, url_prefix='/mpesa')
+        app.register_blueprint(user_auth)
+        app.register_blueprint(invoices, url_prefix="")
+        app.register_blueprint(business, url_prefix="", name="business_route")
+        app.register_blueprint(payments, url_prefix="")
+        app.register_blueprint(user, url_prefix="")
+        app.register_blueprint(mpesa, url_prefix="")
         
         from .scheduler import init_scheduler
         init_scheduler(app)

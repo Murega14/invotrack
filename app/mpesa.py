@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 import os
 import logging
 from flask import Blueprint, request, jsonify, session, redirect
-from .Routes.authentication import login_is_required
 from .models import User, Payment, db, Invoice
 
 mpesa = Blueprint('mpesa', __name__)
@@ -41,7 +40,6 @@ def generate_access_token():
     return response.json()
 
 @mpesa.route('/<int:invoice_id>/make_payment', methods=['POST'])
-@login_is_required
 def lipa_na_mpesa(id: int):
     """
     initializes an stk push for invoice payment

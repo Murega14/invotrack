@@ -1,6 +1,5 @@
 from app import create_app
 from flask import render_template, session, flash, redirect
-from .Routes.authentication import login_is_required
 from.models import *
 from sqlalchemy import func
 
@@ -11,7 +10,6 @@ def index():
     return render_template("index.html")
 
 @app.route('/dashboard')
-@login_is_required
 def dashboard():
     google_id = session.get('google_id')
     
