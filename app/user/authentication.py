@@ -48,12 +48,13 @@ def signup_user():
         if User.query.filter(User.email==email).first():
             return jsonify({"error": "that email already exixts"}), 400
         
+        if User.query.filter(User.phone_number==phone_number).first():
+            return jsonify({"error": "phone number exists"}), 400
+        
         new_user = User(
             name=name,
             email=email,
-            phone_number=phone_number,
-            httponly=True,
-            secure=True
+            phone_number=phone_number
         )
         new_user.hash_password(password)
         db.session.add(new_user)
@@ -64,7 +65,7 @@ def signup_user():
         
         response = jsonify({
             "success": True,
-            "message": "Login successful",
+            "message": "Signup successful",
             "access_token": access_token
         })
         response.set_cookie(
