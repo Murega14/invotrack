@@ -10,6 +10,7 @@ from google.oauth2 import id_token
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
 import requests
+from uuid import UUID
 
 user_auth = Blueprint('user_auth', __name__)
 
@@ -261,7 +262,7 @@ def password_change():
         Exception: If an unexpected error occurs during the process.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = UUID(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -282,8 +283,7 @@ def password_change():
             return jsonify({"error": "password must contain 8 characters, 1 uppercase, lowercase and number"}), 400
         
         try:
-            hashed_password = user.hash_password(new_password)
-            user.password_hash = hashed_password
+            user.hash_password(new_password)
             db.session.commit()
             return jsonify({
                 "success": True,

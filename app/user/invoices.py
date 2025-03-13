@@ -25,7 +25,7 @@ def create_invoice():
         Exception: If an unexpected error occurs during the process.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = uuid.UUID(get_jwt_identity())
         data = request.get_json()
         
         if not all([data.get('business_id'), data.get('due_date'), data.get('items')]):
@@ -143,7 +143,7 @@ def get_user_invoices():
                 }
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = uuid.UUID(get_jwt_identity())
         
         user_invoices = Invoice.query.filter_by(owner_id=user_id).all()
         if not user_invoices:
@@ -310,7 +310,7 @@ def delete_invoice(id: int):
         Response: A JSON response indicating the result of the delete operation.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = uuid.UUID(get_jwt_identity())
         
         invoice = Invoice.query.get_or_404(id)
         if invoice.owner_id != user_id:
@@ -356,7 +356,7 @@ def cancel_invoice(id: int):
         Response: A Flask response object containing a JSON message and an HTTP status code.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = uuid.UUID(get_jwt_identity())
         invoice = Invoice.query.get_or_404(id)
         
         if invoice.owner_id != user_id:
@@ -403,11 +403,14 @@ def update_invoice(id: int):
         Exception: If there is an unexpected error during the execution of the function.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = uuid.UUID(get_jwt_identity())
         
         invoice = InvoiceItem.query.filter_by(invoice_id=id).first()
         if not invoice:
             return jsonify({"error": "invoice not found"}), 404
+        
+        if invoice.issuer_id != user_id:
+            return jsonify({"error": "unauthorized success"}), 403
         
         data = request.get_json()
         
@@ -456,7 +459,7 @@ def get_invoice_by_status(status: str):
                    logged and a JSON response with a 500 status code is returned.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = uuid.UUID(get_jwt_identity())
         invoices = Invoice.query.filter_by(status=status, owner_id=user_id).all()
         
         if not invoices:

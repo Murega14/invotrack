@@ -46,9 +46,18 @@ def validate_password(password):
     return True
 
 def validate_phone_number(phone_number):
-    if not re.search(r"\d{10}$", phone_number):
-        return False
-    return True
+    # Remove any spaces or special characters
+    phone_number = re.sub(r'[\s\-()]', '', phone_number)
+        
+    # Pattern for numbers starting with 07 (10 digits)
+    if phone_number.startswith('07'):
+        return bool(re.match(r'^07\d{8}$', phone_number))
+        
+    # Pattern for numbers starting with 254 (12 digits)
+    elif phone_number.startswith('254'):
+        return bool(re.match(r'^254\d{9}$', phone_number))
+        
+    return False
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")

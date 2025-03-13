@@ -29,7 +29,8 @@ def user_details():
         user_profile = {
             "id": user.id,
             "name": user.name,
-            "email": user.email
+            "email": user.email,
+            "phone_number": user.phone_number
         }
         
         return jsonify(user_profile), 200
@@ -58,7 +59,7 @@ def update_user():
         - 500: If an internal server error occurs.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = UUID(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         data = request.get_json()
@@ -100,12 +101,12 @@ def update_user():
 @jwt_required()
 def delete_user_profile():
     try:
-        user_id = get_jwt_identity()
+        user_id = UUID(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         try:
             db.session.delete(user)
-            db.commit()
+            db.session.commit()
             
             session.clear()
             return jsonify({
