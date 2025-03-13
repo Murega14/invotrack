@@ -55,6 +55,7 @@ class Invoice(db.Model, BaseModel):
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='invoice', lazy=True)
 
+
 class InvoiceItem(db.Model, BaseModel):
     __tablename__ = 'invoice_items'
     
@@ -65,14 +66,21 @@ class InvoiceItem(db.Model, BaseModel):
     subtotal = db.Column(Numeric(10, 2), nullable=False)
     
     def calculate_sub_total(self):
-        self.subtotal = self.unit_price * self.quantity
-        return self.subtotal
+        
+        if self.unit_price is not None and self.quantity is not None:
+            self.subtotal = self.unit_price * self.quantity
+            return self.subtotal
+        return None
     
     def __setattr__(self, name, value):
+        
         super().__setattr__(name, value)
-        if name in {'quantity', 'unit_price'}:
-            self.calculate_sub_total()
-            
+        
+        if name in {'quantity', 'unit_price'} and name != 'subtotal':
+            # Check if both values exist before calculating
+            if hasattr(self, 'quantity') and hasattr(self, 'unit_price'):
+                if self.quantity is not None and self.unit_price is not None:
+                    self.calculate_sub_total()
             
 class Payment(db.Model, BaseModel):
     __tablename__ = 'payments'

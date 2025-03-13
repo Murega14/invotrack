@@ -9,81 +9,117 @@ import uuid
 invoices = Blueprint('invoices', __name__)
 
 @invoices.route('/api/v1/invoices/create', methods=['POST'])
-@jwt_required()        
+@jwt_required()
 def create_invoice():
-    """
-    Create a new invoice for the authenticated user.
-    This function handles the creation of a new invoice, including validation of input data,
-    initialization of the invoice, calculation of the total amount, and addition of invoice items.
-    It also handles database transactions and error logging.
-    Returns:
-        Response: A JSON response with the status of the invoice creation process.
-        - 201: Invoice created successfully.
-        - 400: Bad request due to missing or invalid input data, or database errors.
-        - 500: Internal server error.
-    Raises:
-        Exception: If an unexpected error occurs during the process.
-    """
     try:
-        user_id = uuid.UUID(get_jwt_identity())
+        try:
+            user_id = uuid.UUID(get_jwt_identity())
+        except ValueError:
+            return jsonify({"error": "invalid user ID format"}), 400
+
         data = request.get_json()
-        
-        if not all([data.get('business_id'), data.get('due_date'), data.get('items')]):
-            return jsonify({"error": "input data is required"}), 400
-        
-        
+        if not data:
+            return jsonify({"error": "no data provided"}), 400
+
+        required_fields = ['business_id', 'due_date', 'items']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": f"missing required fields: {', '.join(required_fields)}"}), 400
+
+        try:
+            business_id = uuid.UUID(data['business_id'])
+        except ValueError:
+            return jsonify({"error": "invalid business ID format"}), 400
+
         invoice_number = f"INV-{uuid.uuid4().hex[:8].upper()}"
-        
+
+        try:
+            due_date = datetime.strptime(data['due_date'], '%d-%m-%Y')
+        except ValueError:
+            return jsonify({"error": "invalid date format. Use DD-MM-YYYY"}), 400
         try:
             new_invoice = Invoice(
                 invoice_number=invoice_number,
                 issuer_id=user_id,
-                business_id=data['business_id'],
+                business_id=business_id,
                 status='pending',
                 total_amount=0,
                 date_issued=datetime.now(),
-                due_date=datetime.strptime(data['due_date'], '%d-%m-%Y')
+                due_date=due_date
             )
             db.session.add(new_invoice)
             db.session.flush()
-            
         except SQLAlchemyError as e:
             logger.error(f"failed to initialize invoice creation: {str(e)}")
             db.session.rollback()
-            return jsonify({
-                "message": "failed to initialize invoice creation",
-                "error": str(e)
-            }), 400
-            
+            return jsonify({"message": "failed to initialize invoice creation", "error": str(e)}), 400
+
         total_amount = 0
         invoice_items = []
-        
-        for item in data['items']:
-            if not all([item.get('descrption'), item.get('quantity'), item.get('unit_price')]):
-                return jsonify({
-                    "message": "invalid item data",
-                    "error": "description, quantity and unit_price are required for each item"
-                }), 400
 
-            quantity = int(item['quantity'])
-            unit_price = float(item['unit_price'])
-            sub_total = quantity * unit_price
-            
+        items = data['items'] if isinstance(data['items'], list) else [data['items']]
+
+        for item in items:
+            if not isinstance(item, dict):
+                db.session.rollback()
+                return jsonify({"error": "invalid item format - must be an object"}), 400
+
+            required_item_fields = ['description', 'quantity', 'unit_price']
+            if not all(field in item for field in required_item_fields):
+                db.session.rollback()
+                missing = [f for f in required_item_fields if f not in item]
+                return jsonify({"error": f"missing required fields in item: {', '.join(missing)}"}), 400
+
+            if item['description'] is None or item['quantity'] is None or item['unit_price'] is None:
+                db.session.rollback()
+                return jsonify({"error": "description, quantity and unit_price cannot be null"}), 400
+
+            try:
+                try:
+                    quantity = int(str(item['quantity']).strip().replace(',', ''))
+                    if quantity <= 0:
+                        raise ValueError("quantity must be greater than 0")
+                except (ValueError, TypeError, AttributeError):
+                    raise ValueError(f"invalid quantity value: {item['quantity']}")
+
+                try:
+                    unit_price = float(str(item['unit_price']).strip().replace(',', ''))
+                    if unit_price <= 0:
+                        raise ValueError("unit price must be greater than 0")
+                except (ValueError, TypeError, AttributeError):
+                    raise ValueError(f"invalid unit price value: {item['unit_price']}")
+
+                try:
+                    description = str(item['description']).strip()
+                    if not description:
+                        raise ValueError("description cannot be empty")
+                except (ValueError, TypeError, AttributeError):
+                    raise ValueError(f"invalid description value: {item['description']}")
+
+                sub_total = quantity * unit_price
+
+                logger.info(f"Processing item: description={description}, quantity={quantity}, unit_price={unit_price}, subtotal={sub_total}")
+
+            except ValueError as e:
+                db.session.rollback()
+                return jsonify({"error": f"invalid item data: {str(e)}"}), 400
+
             invoice_item = InvoiceItem(
                 invoice_id=new_invoice.id,
-                description=item['description'],
+                description=description,
                 quantity=quantity,
                 unit_price=unit_price,
                 subtotal=sub_total
             )
+            
             invoice_items.append(invoice_item)
             total_amount += sub_total
         
         new_invoice.total_amount = total_amount
-        
+
         try:
             db.session.add_all(invoice_items)
             db.session.commit()
+
             return jsonify({
                 "success": True,
                 "message": "invoice created successfully",
@@ -91,22 +127,17 @@ def create_invoice():
                 "invoice_number": invoice_number,
                 "total_amount": float(total_amount)
             }), 201
-            
+
         except SQLAlchemyError as e:
             logger.error(f"failed to commit invoice creation: {str(e)}")
             db.session.rollback()
-            return jsonify({
-                "message": "failed to create invoice and add items",
-                "error": str(e)
-            }), 400
-            
+            return jsonify({"message": "failed to create invoice and add items", "error": str(e)}), 400
+
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
-        return jsonify({
-            "message": "internal server error",
-            "error": str(e)
-        }), 500
-                               
+        return jsonify({"message": "internal server error", "error": str(e)}), 500
+    
+                  
 @invoices.route('/api/v1/invoices', methods=['GET'])
 @jwt_required()
 def get_user_invoices():
@@ -145,15 +176,15 @@ def get_user_invoices():
     try:
         user_id = uuid.UUID(get_jwt_identity())
         
-        user_invoices = Invoice.query.filter_by(owner_id=user_id).all()
+        user_invoices = Invoice.query.filter_by(issuer_id=user_id).all()
         if not user_invoices:
             return jsonify({"message": "no invoices found associated with your user id"}), 404
         
-        invoices_list =[{
-            "id": invoice.id,
+        invoices_list = [{
+            "id": str(invoice.id),
             "invoice_number": invoice.invoice_number,
             "recipient": invoice.business.name if invoice.business else None,
-            "amount": float(invoice.amount),
+            "amount": float(invoice.total_amount),
             "date_issued": invoice.date_issued.isoformat(),
             "due_date": invoice.due_date.isoformat(),
             "status": invoice.status
@@ -171,13 +202,13 @@ def get_user_invoices():
             "error": str(e)
         }), 500
         
-@invoices.route('/api/v1/invoices/<int:business_id>',methods=['GET'])
+@invoices.route('/api/v1/invoices/business/<uuid:business_id>', methods=['GET'])
 @jwt_required()
-def get_business_invoices(business_id: int):
+def get_business_invoices(business_id):
     """
     Retrieve all invoices associated with a specific business.
     Args:
-        business_id (int): The ID of the business whose invoices are to be retrieved.
+        business_id (uuid): The ID of the business whose invoices are to be retrieved.
     Returns:
         Response: A Flask Response object containing a JSON payload.
             - If invoices are found:
@@ -190,7 +221,7 @@ def get_business_invoices(business_id: int):
                 - status code 500
                 - JSON payload with an error message and the error details.
     Each invoice in the list contains the following fields:
-        - id (int): The invoice ID.
+        - id (str): The invoice ID.
         - invoice_number (str): The invoice number.
         - issuer (str or None): The name of the issuer, if available.
         - amount (float): The amount of the invoice.
@@ -204,10 +235,10 @@ def get_business_invoices(business_id: int):
             return jsonify({"message": "no invoices found associated with this business"}), 404
         
         invoices_list = [{
-            "id": invoice.id,
+            "id": str(invoice.id),
             "invoice_number": invoice.invoice_number,
             "issuer": invoice.issuer.name if invoice.issuer else None,
-            "amount": float(invoice.amount),
+            "amount": float(invoice.total_amount),
             "date_issued": invoice.date_issued.isoformat(),
             "due_date": invoice.due_date.isoformat(),
             "status": invoice.status
@@ -225,19 +256,19 @@ def get_business_invoices(business_id: int):
             "error": str(e)
         }), 500
         
-@invoices.route('/api/v1/invoices/<int:id>', methods=['GET'])
+@invoices.route('/api/v1/invoices/<uuid:invoice_id>', methods=['GET'])
 @jwt_required()
-def get_single_invoice(id: int):
+def get_single_invoice(invoice_id):
     """
     Retrieve a single invoice by its ID.
     Args:
-        id (int): The ID of the invoice to retrieve.
+        invoice_id (uuid): The ID of the invoice to retrieve.
     Returns:
         tuple: A tuple containing a JSON response and an HTTP status code.
             - On success (HTTP 200):
                 {
                     "invoice": {
-                        "id": int,
+                        "id": str,
                         "invoice_number": str,
                         "issuer": str or None,
                         "recipient": str or None,
@@ -260,9 +291,9 @@ def get_single_invoice(id: int):
         Exception: If there is an error retrieving the invoice or its items.
     """
     try:
-        invoice = Invoice.query.get_or_404(id)
+        invoice = Invoice.query.get_or_404(invoice_id)
         
-        items = InvoiceItem.query.filter_by(invoice_id=id).all()
+        items = InvoiceItem.query.filter_by(invoice_id=invoice_id).all()
         invoice_items = [{
             "service": item.description,
             "quantity": item.quantity,
@@ -270,12 +301,12 @@ def get_single_invoice(id: int):
         } for item in items]
         
         invoice_details = {
-            "id": id,
+            "id": str(invoice_id),
             "invoice_number": invoice.invoice_number,
             "issuer": invoice.issuer.name if invoice.issuer else None,
             "recipient": invoice.business.name if invoice.business else None,
             "details": invoice_items,
-            "amount": float(invoice.amount),
+            "amount": float(invoice.total_amount),
             "date_issued": invoice.date_issued.isoformat(),
             "due_date": invoice.due_date.isoformat(),
             "status": invoice.status
@@ -293,9 +324,9 @@ def get_single_invoice(id: int):
             "error": str(e)
         }), 500
         
-@invoices.route('/api/v1/invoices/<int:id>/delete', methods=['DELETE'])
+@invoices.route('/api/v1/invoices/<uuid:invoice_id>/delete', methods=['DELETE'])
 @jwt_required()
-def delete_invoice(id: int):
+def delete_invoice(invoice_id):
     """
     Deletes an invoice by its ID.
     This function attempts to delete an invoice from the database. It first checks if the 
@@ -305,16 +336,16 @@ def delete_invoice(id: int):
     it rolls back the transaction and returns an error message. If any other exception 
     occurs, it returns a 500 internal server error.
     Args:
-        id (int): The ID of the invoice to be deleted.
+        invoice_id (uuid): The ID of the invoice to be deleted.
     Returns:
         Response: A JSON response indicating the result of the delete operation.
     """
     try:
         user_id = uuid.UUID(get_jwt_identity())
         
-        invoice = Invoice.query.get_or_404(id)
-        if invoice.owner_id != user_id:
-            return jsonify({"Error": "unauthorized access"}), 403
+        invoice = Invoice.query.get_or_404(invoice_id)
+        if invoice.issuer_id != user_id:
+            return jsonify({"error": "unauthorized access"}), 403
         
         try:
             db.session.delete(invoice)
@@ -339,35 +370,35 @@ def delete_invoice(id: int):
             "error": str(e)
         }), 500       
 
-@invoices.route('/api/v1/invoices/<int:id>/cancel', methods=['PATCH'])
+@invoices.route('/api/v1/invoices/<uuid:invoice_id>/cancel', methods=['PATCH'])
 @jwt_required()
-def cancel_invoice(id: int):
+def cancel_invoice(invoice_id):
     """
     Cancel an invoice by its ID.
-    This function attempts to cancel an invoice by updating its status to 'canceled'.
+    This function attempts to cancel an invoice by updating its status to 'cancelled'.
     It first checks if the current user is authorized to cancel the invoice.
     If the user is not authorized, it returns a 403 error.
     If the invoice is successfully canceled, it returns a success message with a 200 status code.
     If there is a database error during the cancellation process, it returns a 400 error with the error details.
     If any other exception occurs, it returns a 500 internal server error.
     Args:
-        id (int): The ID of the invoice to be canceled.
+        invoice_id (uuid): The ID of the invoice to be canceled.
     Returns:
         Response: A Flask response object containing a JSON message and an HTTP status code.
     """
     try:
         user_id = uuid.UUID(get_jwt_identity())
-        invoice = Invoice.query.get_or_404(id)
+        invoice = Invoice.query.get_or_404(invoice_id)
         
-        if invoice.owner_id != user_id:
+        if invoice.issuer_id != user_id:
             return jsonify({"error": "unauthorized access"}), 403
         
         try:
-            invoice.status = 'canceled'
+            invoice.status = 'cancelled'
             db.session.commit()
             return jsonify({
                 "success": True,
-                "message": "invoice has been canceled"
+                "message": "invoice has been cancelled"
             }), 200
         
         except SQLAlchemyError as e:
@@ -385,13 +416,13 @@ def cancel_invoice(id: int):
             "error": str(e)
         }), 500
     
-@invoices.route('/api/v1/invoices/<int:id>/update', methods=['PUT'])
+@invoices.route('/api/v1/invoices/<uuid:invoice_id>/update', methods=['PUT'])
 @jwt_required()
-def update_invoice(id: int):
+def update_invoice(invoice_id):
     """
     Update the details of an invoice with the given ID.
     Args:
-        id (int): The ID of the invoice to be updated.
+        invoice_id (uuid): The ID of the invoice to be updated.
     Returns:
         Response: A JSON response indicating the success or failure of the update operation.
             - On success: Returns a JSON response with a success message and HTTP status code 200.
@@ -405,27 +436,64 @@ def update_invoice(id: int):
     try:
         user_id = uuid.UUID(get_jwt_identity())
         
-        invoice = InvoiceItem.query.filter_by(invoice_id=id).first()
+        invoice = Invoice.query.get_or_404(invoice_id)
         if not invoice:
             return jsonify({"error": "invoice not found"}), 404
         
         if invoice.issuer_id != user_id:
-            return jsonify({"error": "unauthorized success"}), 403
+            return jsonify({"error": "unauthorized access"}), 403
         
         data = request.get_json()
+        if not data or not data.get('items'):
+            return jsonify({"error": "no data or no items provided"}), 400
         
         try:
-            if 'description' in data:
-                invoice.description = data['description']
-            if 'quantity' in data:
-                invoice.quantity = int(data['quantity'])
-            if 'unit_price' in data:
-                invoice.unit_price = float(data['unit_price'])
+            InvoiceItem.query.filter_by(invoice_id=invoice_id).delete()
+            
+            total_amount = 0
+            items = data['items'] if isinstance(data['items'], list) else [data['items']]
+            
+            for item in items:
+                if not isinstance(item, dict):
+                    db.session.rollback()
+                    return jsonify({"error": "invalid item format - must be an object"}), 400
+
+                required_item_fields = ['description', 'quantity', 'unit_price']
+                if not all(field in item for field in required_item_fields):
+                    db.session.rollback()
+                    missing = [f for f in required_item_fields if f not in item]
+                    return jsonify({"error": f"missing required fields in item: {', '.join(missing)}"}), 400
+                
+                description = str(item['description']).strip()
+                quantity = int(str(item['quantity']).strip().replace(',', ''))
+                unit_price = float(str(item['unit_price']).strip().replace(',', ''))
+                sub_total = quantity * unit_price
+                
+                invoice_item = InvoiceItem(
+                    invoice_id=invoice_id,
+                    description=description,
+                    quantity=quantity,
+                    unit_price=unit_price,
+                    subtotal=sub_total
+                )
+                
+                db.session.add(invoice_item)
+                total_amount += sub_total
+            
+            invoice.total_amount = total_amount
+            
+            if 'due_date' in data:
+                try:
+                    invoice.due_date = datetime.strptime(data['due_date'], '%d-%m-%Y')
+                except ValueError:
+                    return jsonify({"error": "invalid date format. Use DD-MM-YYYY"}), 400
+            
                 
             db.session.commit()
             return jsonify({
                 "success": True,
-                "message": "invoice details have been updated"
+                "message": "invoice has been updated",
+                "total_amount": float(total_amount)
             }), 200
             
         except SQLAlchemyError as e:
@@ -443,13 +511,13 @@ def update_invoice(id: int):
             "error": str(e)
         }), 500
  
-@invoices.route('/api/v1/invoices/<string:status>', methods=['GET'])
+@invoices.route('/api/v1/invoices/status/<string:status>', methods=['GET'])
 @jwt_required()
 def get_invoice_by_status(status: str):
     """
     Retrieve invoices by their status for the current authenticated user.
     Args:
-        status (str): The status of the invoices to retrieve (e.g., 'paid', 'unpaid').
+        status (str): The status of the invoices to retrieve (e.g., 'paid', 'pending').
     Returns:
         Response: A JSON response containing a list of invoices with the specified status
                   for the current user, or an error message if no invoices are found or
@@ -460,16 +528,21 @@ def get_invoice_by_status(status: str):
     """
     try:
         user_id = uuid.UUID(get_jwt_identity())
-        invoices = Invoice.query.filter_by(status=status, owner_id=user_id).all()
+        
+        valid_statuses = ['pending', 'overdue', 'cancelled', 'paid']
+        if status not in valid_statuses:
+            return jsonify({"error": f"invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
+        
+        invoices = Invoice.query.filter_by(status=status, issuer_id=user_id).all()
         
         if not invoices:
-            return jsonify({"error": f"no {status} invoices available"})
+            return jsonify({"message": f"no {status} invoices available"}), 404
         
         invoices_list = [{
-            "id": invoice.id,
+            "id": str(invoice.id),
             "invoice_number": invoice.invoice_number,
             "recipient": invoice.business.name if invoice.business else None,
-            "amount": float(invoice.amount),
+            "amount": float(invoice.total_amount),
             "date_issued": invoice.date_issued.isoformat(),
             "due_date": invoice.due_date.isoformat()
         } for invoice in invoices]
@@ -486,14 +559,14 @@ def get_invoice_by_status(status: str):
             "error": str(e)
         }), 500
         
-@invoices.route('api/v1/invoices/<int:business_id>/<string:status>', methods=['GET'])
+@invoices.route('/api/v1/invoices/business/<uuid:business_id>/status/<string:status>', methods=['GET'])
 @jwt_required()
-def get_business_invoices_by_status(business_id: int, status: str):
+def get_business_invoices_by_status(business_id, status: str):
     """
     Retrieve invoices for a specific business based on their status.
     Args:
-        business_id (int): The ID of the business whose invoices are to be retrieved.
-        status (str): The status of the invoices to be retrieved (e.g., 'paid', 'unpaid').
+        business_id (uuid): The ID of the business whose invoices are to be retrieved.
+        status (str): The status of the invoices to be retrieved (e.g., 'paid', 'pending').
     Returns:
         Response: A Flask JSON response containing:
             - success (bool): Indicates if the operation was successful.
@@ -506,15 +579,19 @@ def get_business_invoices_by_status(business_id: int, status: str):
             - 500: If an internal server error occurs.
     """
     try:
+        valid_statuses = ['pending', 'overdue', 'cancelled', 'paid']
+        if status not in valid_statuses:
+            return jsonify({"error": f"invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
+            
         invoices = Invoice.query.filter_by(status=status, business_id=business_id).all()
         if not invoices:
-            return jsonify({"error": f"no {status} invoices found"}), 404
+            return jsonify({"message": f"no {status} invoices found for this business"}), 404
         
         invoices_list = [{
-            "id": invoice.id,
+            "id": str(invoice.id),
             "invoice_number": invoice.invoice_number,
             "issuer": invoice.issuer.name if invoice.issuer else None,
-            "amount": float(invoice.amount),
+            "amount": float(invoice.total_amount),
             "date_issued": invoice.date_issued.isoformat(),
             "due_date": invoice.due_date.isoformat()
         } for invoice in invoices]

@@ -51,11 +51,15 @@ def validate_phone_number(phone_number):
         
     # Pattern for numbers starting with 07 (10 digits)
     if phone_number.startswith('07'):
-        return bool(re.match(r'^07\d{8}$', phone_number))
+        if not bool(re.match(r'^07[0-9]{8}$', phone_number)):
+            return False
+        return len(phone_number) == 10
         
     # Pattern for numbers starting with 254 (12 digits)
     elif phone_number.startswith('254'):
-        return bool(re.match(r'^254\d{9}$', phone_number))
+        if not bool(re.match(r'^254[0-9]{9}$', phone_number)):
+            return False
+        return len(phone_number) == 12
         
     return False
 

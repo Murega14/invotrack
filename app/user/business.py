@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..models import Business, db
 from email_validator import validate_email, EmailNotValidError
 from sqlalchemy.exc import SQLAlchemyError
+from uuid import UUID
 
 business = Blueprint('business', __name__)
 
@@ -25,7 +26,7 @@ def register_business():
         HTTP Status Code: 200 if the business is created successfully, otherwise an appropriate error code.
     """
     try:
-        user_id = get_jwt_identity()
+        user_id = UUID(get_jwt_identity())
         
         data = request.get_json()
         name = data.get('name')
@@ -97,7 +98,7 @@ def view_businesses():
         business_details = [{
             "id": business.id,
             "name": business.name,
-            "owner": business.user.name if business.user else None,
+            "owner": business.owner.name if business.owner else None,
             "email": business.email,
             "phone_number": business.phone_number
         } for business in businesses]
