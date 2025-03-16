@@ -81,7 +81,7 @@ def signup_user():
         db.rollback()
         return jsonify({"error": "internal server error"}), 500
     
-@user_auth.route('/api/v1/user/google_signup', methods=['POST'])
+@user_auth.route('/api/v1/user/google_signup', methods=['GET', 'POST'])
 def google_signup():
     """
     Initiates the Google signup process by redirecting the user to the Google authorization URL.
@@ -96,7 +96,9 @@ def google_signup():
     try:
         authorization_url, state = flow.authorization_url(prompt="consent")
         session["state"] = state
-        return jsonify({"authorization_url": authorization_url})
+        if request.method == 'POST':
+            return jsonify({"authorization_url": authorization_url})
+        return redirect(authorization_url)
     
     except Exception as e:
         logger.error(f"failed to signup: {str(e)}")
