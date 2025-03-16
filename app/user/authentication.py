@@ -96,12 +96,12 @@ def google_signup():
     try:
         authorization_url, state = flow.authorization_url(prompt="consent")
         session["state"] = state
-        return redirect(authorization_url)
+        return jsonify({"authorization_url": authorization_url})
     
     except Exception as e:
         logger.error(f"failed to signup: {str(e)}")
         return jsonify({"error": "internal server error"}), 500
-    
+        
 @user_auth.route('/callback', methods=['GET'])
 def callback():
     """
