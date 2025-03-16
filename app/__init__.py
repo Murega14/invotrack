@@ -6,9 +6,9 @@ from flask_migrate import Migrate
 from flask_admin import Admin
 from flask_mail import Mail
 from flask_apscheduler import APScheduler
+from flask_cors import CORS
 from .models import db
 from flask_jwt_extended import JWTManager
-
 
 load_dotenv()
 
@@ -21,6 +21,17 @@ jwt = JWTManager()
 def create_app():
     app = Flask(__name__)
     
+    
+    CORS(app, resources={
+        r"/api/*": {  
+            "origins": ["http://localhost:3000", "https://invotrack-frontend.vercel.app"],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "expose_headers": ["Content-Range", "X-Content-Range"],
+            "supports_credentials": True
+        }
+    })
+    
     app.config.update(
         SQLALCHEMY_DATABASE_URI=os.getenv('DEV_DATABASE_URI'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
@@ -30,7 +41,8 @@ def create_app():
         MAIL_USE_TLS=os.getenv('MAIL_USE_TLS', 'true').lower() == 'true',
         MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
         MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
-        SCHEDULER_API_ENABLED=True
+        SCHEDULER_API_ENABLED=True,
+        CORS_HEADERS='Content-Type'
     )
     
     db.init_app(app)
