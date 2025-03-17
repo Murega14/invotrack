@@ -1,5 +1,5 @@
 from app import create_app
-from flask import render_template, session, flash, redirect
+from flask import render_template, session, flash, redirect, jsonify
 from.models import *
 from sqlalchemy import func
 
@@ -7,7 +7,8 @@ app = create_app()
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    response = jsonify({"message": "Documentation coming soon"})
+    return response, 200
 
 @app.route('/dashboard')
 def dashboard():
