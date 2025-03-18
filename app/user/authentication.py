@@ -104,7 +104,7 @@ def google_signup():
         logger.error(f"failed to signup: {str(e)}")
         return jsonify({"error": "internal server error"}), 500
         
-@user_auth.route('/callback', methods=['GET'])
+@user_auth.route('/callback', methods=['POST'])
 def callback():
     """
     Handles the OAuth2 callback from Google, processes the authentication, and creates or retrieves a user in the database.
@@ -167,7 +167,7 @@ def callback():
         logger.error(f"Failed to complete Google OAuth2 login/signup: {str(e)}")
         return jsonify({"error": "internal server error"}), 500
     
-@user_auth.route('/api/v1/user/login', methods=['GET'])
+@user_auth.route('/api/v1/user/login', methods=['POST'])
 def login_user():
     """
     Authenticates a user and generates access and refresh tokens.
