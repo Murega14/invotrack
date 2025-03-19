@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models import db, Invoice, InvoiceItem
+from ..models import db, Invoice, InvoiceItem, Business
 from ..extensions import logger
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
@@ -253,6 +253,71 @@ def get_business_invoices(business_id):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
+            "error": str(e)
+        }), 500
+        
+
+@invoices.route('/api/v1/invoices/received', methods=['GET'])
+@jwt_required()
+def get_received_invoices():
+    """
+    Retrieves all invoices received by the authenticated user's businesses.
+    This function fetches all invoices where the user's businesses are recipients. It first gets all
+    businesses owned by the authenticated user, then finds all invoices where these businesses are
+    recipients.
+    Returns:
+        tuple: A tuple containing:
+            - A JSON response with:
+                - success (bool): True if operation was successful
+                - invoices (list): List of dictionaries containing invoice details:
+                    - id (UUID): Invoice unique identifier
+                    - invoice_number (str): Invoice reference number
+                    - issuer (str): Name of the business that issued the invoice
+                    - recipient (str): Name of the business receiving the invoice
+                    - amount (float): Total amount of the invoice
+                    - status (str): Current status of the invoice
+                    - date_issued (str): ISO formatted date when invoice was issued
+                    - due_date (str): ISO formatted date when invoice is due
+            - HTTP status code (int)
+    Raises:
+        500: If there's any error during the process
+        404: If no businesses are associated with the user
+    Requires:
+        JWT authentication token in the request
+    """
+    try:
+        user_id = uuid.UUID(get_jwt_identity())
+        
+        #retrieve all businesses related to the user
+        businesses = Business.query.filter_by(owner_id=user_id).all()
+        if not businesses:
+            return jsonify({"message": "no businesses associated with this user"}), 404
+        
+        business_ids = [business.id for business in businesses]
+        
+        invoices = Invoice.query.filter(Invoice.business_id.in_(business_ids)).all()
+        invoice_list = [{
+            "id": str(invoice.id),
+            "invoice_number": invoice.invoice_number,
+            "issuer": invoice.issuer.name if invoice.issuer else None,
+            "recipient": invoice.business.name if invoice.business else None,
+            "amount": float(invoice.total_amount),
+            "status": invoice.status,
+            "date_issued": invoice.date_issued.isoformat(),
+            "due_date": invoice.due_date.isoformat()
+        } for invoice in invoices]
+        
+        response = jsonify({
+            "success": True,
+            "invoices": invoice_list
+        })
+        
+        return response, 200
+    
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({
+            "message": "failed to fetch invoices",
             "error": str(e)
         }), 500
         
