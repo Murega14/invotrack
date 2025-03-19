@@ -109,8 +109,53 @@ def view_businesses():
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({"error": "internal server error"}), 500
     
-@business.route('/api/v1/businesses/<int:id>', methods=['GET'])
-def single_business(id: int):
+@business.route('/api/v1/businesses/mine', methods=['GET'])
+@jwt_required()
+def my_businesses():
+    """
+    Retrieve all businesses associated with the authenticated user.
+    This endpoint fetches all business records owned by the currently authenticated user.
+    It requires a valid JWT token for authentication.
+    Returns:
+        tuple: A tuple containing:
+            - A JSON response with:
+                - On success (200): 
+                    - success: True
+                    - business: List of business dictionaries containing id, name, email and phone_number
+                - On no businesses found (400):
+                    - message: Notification that no businesses were found
+                - On error (500):
+                    - message: Error notification
+            - HTTP status code
+    Raises:
+        Exception: If there's any error during the database query or processing
+    """
+    try:
+        user_id = UUID(get_jwt_identity())
+        
+        businesses = Business.query.filter_by(owner_id=user_id).all()
+        if not businesses:
+            return jsonify({"message": "no businesses associated with this user"}), 400
+        
+        business_list = [{
+            "id": str(business.id),
+            "name": business.name,
+            "email": business.email,
+            "phone_number": business.phone_number
+        } for business in businesses]
+        
+        response = jsonify({
+            "success": True,
+            "business": business_list
+        })
+        return response, 200
+    
+    except Exception as e:
+        logger.error(f"endpoint error: {str(e)}")
+        return jsonify({"message": "failed to fetch businesses"}), 500
+    
+@business.route('/api/v1/businesses/<uuid:id>', methods=['GET'])
+def single_business(id):
     """
     Fetches the details of a single business by its ID.
     Args:
@@ -141,9 +186,9 @@ def single_business(id: int):
             "message": "failed to fetch business detail",
         }), 500
 
-@business.route('/api/v1/businesses/update/<int:id>', methods=['PUT'])
+@business.route('/api/v1/businesses/update/<uuid:id>', methods=['PUT'])
 @jwt_required()
-def update_business(id: int):
+def update_business(id):
     """
     Update the details of a business.
     Args:
@@ -211,9 +256,9 @@ def update_business(id: int):
             "message": "internal server error",
         }), 500
         
-@business.route('/api/v1/businesses/<int:id>/delete', methods=['DELETE'])
+@business.route('/api/v1/businesses/<uuid:id>/delete', methods=['DELETE'])
 @jwt_required()
-def delete_business(id: int):
+def delete_business(id):
     """
     Deletes a business by its ID.
     This function attempts to delete a business record from the database
