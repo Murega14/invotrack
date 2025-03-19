@@ -101,7 +101,7 @@ def create_invoice():
 
             except ValueError as e:
                 db.session.rollback()
-                return jsonify({"error": f"invalid item data: {str(e)}"}), 400
+                return jsonify({"error": "invalid item data"}), 400
 
             invoice_item = InvoiceItem(
                 invoice_id=new_invoice.id,
@@ -427,7 +427,6 @@ def delete_invoice(invoice_id):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500       
 
 @invoices.route('/api/v1/invoices/<uuid:invoice_id>/cancel', methods=['PATCH'])

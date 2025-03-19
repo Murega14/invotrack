@@ -42,7 +42,7 @@ def register_business():
         try:
             validate_email(email)
         except EmailNotValidError as e:
-            return jsonify({"error": str(e)}), 400
+            return jsonify({"error": "invalid email format"}), 400
         
         try:
             validate_phone_number(phone_number)
@@ -67,7 +67,7 @@ def register_business():
     
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "internal server error"}), 500
     
 @business.route('/api/v1/businesses', methods=['GET'])
 def view_businesses():
@@ -185,7 +185,7 @@ def update_business(id: int):
                     validate_email(data['email'])
                     business.email = data['email']
                 except EmailNotValidError as e:
-                    return jsonify({"error": str(e)}), 400
+                    return jsonify({"error": "invalid email format"}), 400
             if 'phone_number' in data:
                 try:
                     validate_phone_number(data['phone_number'])

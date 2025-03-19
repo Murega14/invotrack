@@ -72,6 +72,9 @@ def signup_user():
         response.set_cookie(
             "session_token",
             access_token,
+            secure=True,
+            httponly=True,
+            samesite='Lax'
         )
         
         return response, 200
@@ -158,7 +161,10 @@ def callback():
         })
         response.set_cookie(
             "session_token",
-            access_token
+            access_token,
+            httponly=True,
+            samesite='Lax',
+            secure=True
         )
         
         return response, 200
@@ -215,7 +221,7 @@ def login_user():
             "access_token": access_token,
             "refresh_token": refresh_token
         })
-        response.set_cookie("session_token", refresh_token, secure=True)
+        response.set_cookie("session_token", refresh_token, secure=True, httponly=True, samesite='Lax')
         
         return response, 200
     
@@ -239,7 +245,7 @@ def logout():
         response = jsonify({
             "message": "logged out"
         })
-        response.set_cookie('session_token', '', expires=0)
+        response.set_cookie('session_token','', secure=True, expires=0, samesite='Lax', httponly=True)
         return response, 200
     
     except Exception as e:
