@@ -139,7 +139,6 @@ def single_business(id: int):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "failed to fetch business detail",
-            "error": str(e)
         }), 500
 
 @business.route('/api/v1/businesses/update/<int:id>', methods=['PUT'])
@@ -204,14 +203,12 @@ def update_business(id: int):
             db.session.rollback()
             return jsonify({
                 "message": "failed to update business details",
-                "error": str(e)
             }), 400
             
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
         
 @business.route('/api/v1/businesses/<int:id>/delete', methods=['DELETE'])
@@ -253,12 +250,10 @@ def delete_business(id: int):
             db.session.rollback()
             return jsonify({
                 "message": "failed to delete business",
-                "error": str(e)
             }), 400
             
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500

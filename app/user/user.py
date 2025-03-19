@@ -39,7 +39,6 @@ def user_details():
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "failed to fetch user profile",
-            "error": str(e)
         }), 500
         
 @user.route('/api/v1/user/update', methods=['PUT'])
@@ -87,14 +86,12 @@ def update_user():
             db.session.rollback()
             return jsonify({
                 "message": "failed to update user profile",
-                "error": str(e)
             }), 400
             
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
         
 @user.route('/api/v1/user/delete', methods=['DELETE'])
@@ -119,12 +116,10 @@ def delete_user_profile():
             db.session.rollback()
             return jsonify({
                 "message": "failed to delete user profile",
-                "error": str(e)
             }), 400
                 
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500

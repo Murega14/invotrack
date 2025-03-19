@@ -47,5 +47,4 @@ def get_payments():
         logger.error(f'endpoint error: {str(e)}')
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500

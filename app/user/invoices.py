@@ -51,7 +51,7 @@ def create_invoice():
         except SQLAlchemyError as e:
             logger.error(f"failed to initialize invoice creation: {str(e)}")
             db.session.rollback()
-            return jsonify({"message": "failed to initialize invoice creation", "error": str(e)}), 400
+            return jsonify({"message": "failed to initialize invoice creation"}), 400
 
         total_amount = 0
         invoice_items = []
@@ -131,11 +131,11 @@ def create_invoice():
         except SQLAlchemyError as e:
             logger.error(f"failed to commit invoice creation: {str(e)}")
             db.session.rollback()
-            return jsonify({"message": "failed to create invoice and add items", "error": str(e)}), 400
+            return jsonify({"message": "failed to create invoice and add items"}), 400
 
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
-        return jsonify({"message": "internal server error", "error": str(e)}), 500
+        return jsonify({"message": "internal server error"}), 500
     
                   
 @invoices.route('/api/v1/invoices', methods=['GET'])
@@ -199,7 +199,6 @@ def get_user_invoices():
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
         
 @invoices.route('/api/v1/invoices/business/<uuid:business_id>', methods=['GET'])
@@ -253,7 +252,6 @@ def get_business_invoices(business_id):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
         
 
@@ -318,7 +316,6 @@ def get_received_invoices():
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "failed to fetch invoices",
-            "error": str(e)
         }), 500
         
 @invoices.route('/api/v1/invoices/<uuid:invoice_id>', methods=['GET'])
@@ -386,7 +383,6 @@ def get_single_invoice(invoice_id):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
         
 @invoices.route('/api/v1/invoices/<uuid:invoice_id>/delete', methods=['DELETE'])
@@ -425,7 +421,6 @@ def delete_invoice(invoice_id):
             db.session.rollback()
             return jsonify({
                 "message": "failed to delete invoice",
-                "error": str(e)
             }), 400
             
     except Exception as e:
@@ -471,14 +466,12 @@ def cancel_invoice(invoice_id):
             db.session.rollback()
             return jsonify({
                 "message": "failed to cancel invoice",
-                "error": str(e)
             }), 400
             
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
     
 @invoices.route('/api/v1/invoices/<uuid:invoice_id>/update', methods=['PUT'])
@@ -566,14 +559,12 @@ def update_invoice(invoice_id):
             db.session.rollback()
             return jsonify({
                 "message": "failed to update invoice details",
-                "error": str(e)
             }), 400
             
     except Exception as e:
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
  
 @invoices.route('/api/v1/invoices/status/<string:status>', methods=['GET'])
@@ -621,7 +612,6 @@ def get_invoice_by_status(status: str):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
         
 @invoices.route('/api/v1/invoices/business/<uuid:business_id>/status/<string:status>', methods=['GET'])
@@ -670,5 +660,4 @@ def get_business_invoices_by_status(business_id, status: str):
         logger.error(f"endpoint error: {str(e)}")
         return jsonify({
             "message": "internal server error",
-            "error": str(e)
         }), 500
